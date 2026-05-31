@@ -26,7 +26,7 @@ interface ChatMessage {
 }
 
 interface DbPart { id: number; name: string; imageUrl: string; }
-interface VoiceConfig { name: string; pitch: number; rate: number; browserVoiceName?: string | null; elevenLabsVoiceId?: string | null; }
+interface VoiceConfig { name: string; pitch: number; rate: number; browserVoiceName?: string | null; elevenLabsVoiceId?: string | null; modelPath?: string | null; }
 
 export default function Overlay() {
   const search = typeof window !== "undefined" ? window.location.search : "";
@@ -79,8 +79,8 @@ export default function Overlay() {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     window.speechSynthesis?.cancel();
 
-    if (vc?.elevenLabsVoiceId) {
-      // Use server-side ElevenLabs TTS
+    if (vc?.elevenLabsVoiceId || vc?.modelPath) {
+      // Use server-side TTS (ElevenLabs or Piper)
       const url = `/api/tts/synthesize?voiceId=${encodeURIComponent(voiceId)}&text=${encodeURIComponent(text)}`;
       const audio = new Audio(url);
       audioRef.current = audio;

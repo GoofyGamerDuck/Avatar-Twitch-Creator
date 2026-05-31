@@ -65,14 +65,19 @@ router.get("/admin/voices", requireAdmin, async (_req: Request, res: Response): 
 });
 
 router.post("/admin/voices", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { name, description, pitch, rate, browserVoiceName, sortOrder } = req.body as {
+  const { name, description, pitch, rate, browserVoiceName, elevenLabsVoiceId, modelPath, modelConfigPath, sortOrder } = req.body as {
     name: string; description?: string; pitch?: number; rate?: number;
-    browserVoiceName?: string; sortOrder?: number;
+    browserVoiceName?: string; elevenLabsVoiceId?: string;
+    modelPath?: string; modelConfigPath?: string; sortOrder?: number;
   };
   if (!name) { res.status(400).json({ error: "name required" }); return; }
   const [voice] = await db.insert(voicesTable).values({
     name, description: description ?? "", pitch: pitch ?? 1.0, rate: rate ?? 1.0,
-    browserVoiceName: browserVoiceName ?? null, sortOrder: sortOrder ?? 0,
+    browserVoiceName: browserVoiceName ?? null,
+    elevenLabsVoiceId: elevenLabsVoiceId ?? null,
+    modelPath: modelPath ?? null,
+    modelConfigPath: modelConfigPath ?? null,
+    sortOrder: sortOrder ?? 0,
   }).returning();
   res.status(201).json({ voice });
 });
