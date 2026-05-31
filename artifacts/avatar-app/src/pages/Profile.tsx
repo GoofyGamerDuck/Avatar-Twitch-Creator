@@ -7,20 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
+import type { PartPositionsMap } from "@/components/AvatarPreview";
+
+interface DbPart { id: number; name: string; imageUrl: string; }
 
 export default function Profile() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { data: user, isLoading: userLoading } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false } });
   const { data: avatarSettings, isLoading: avatarLoading } = useGetMyAvatar({ query: { queryKey: getGetMyAvatarQueryKey(), enabled: !!user } });
   const [copied, setCopied] = useState(false);
+  const [customPartImages, setCustomPartImages] = useState<Record<string, string>>({});
+
+  useEffect(() => { if (!userLoading && !user) setLocation("/"); }, [user, userLoading, setLocation]);
 
   useEffect(() => {
-    if (!userLoading && !user) {
-      setLocation("/");
-    }
-  }, [user, userLoading, setLocation]);
+    fetch("/api/parts")
+      .then(r => r.json())
+      .then((d: { parts: DbPart[] }) => {
+        const map: Record<string, string> = {};
+        d.parts?.forEach(p => { if (p.imageUrl) map[p.name] = p.imageUrl; });
+        setCustomPartImages(map);
+      })
+      .catch(() => {});
+  }, []);
 
-  if (userLoading || avatarLoading) return <Layout><div className="flex-1 flex items-center justify-center">Loading profile...</div></Layout>;
+  if (userLoading || avatarLoading) return <Layout><div className="flex-1 flex items-center justify-center">Loading profile…</div></Layout>;
   if (!user || !avatarSettings) return null;
 
   const publicApiUrl = `${window.location.origin}/api/users/${user.twitchUsername}/avatar`;
@@ -35,24 +46,28 @@ export default function Profile() {
     <Layout>
       <div className="container max-w-4xl mx-auto p-4 py-12">
         <h1 className="text-3xl font-bold font-mono mb-8">Your Profile</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-1 space-y-6">
             <div className="bg-card border border-border rounded-3xl p-6 shadow-xl text-center">
               <div className="w-48 h-48 mx-auto mb-6">
-                <AvatarPreview 
+                <AvatarPreview
                   skinTone={avatarSettings.skinTone}
                   hairStyle={avatarSettings.hairStyle}
                   hairColor={avatarSettings.hairColor}
                   eyeStyle={avatarSettings.eyeStyle}
+                  eyeColor={avatarSettings.eyeColor ?? "#1e1b4b"}
                   mouthStyle={avatarSettings.mouthStyle}
                   outfitStyle={avatarSettings.outfitStyle}
-                  accessory={avatarSettings.accessory}
+                  outfitColor={avatarSettings.outfitColor ?? "#2563eb"}
+                  accessory={avatarSettings.accessory ?? null}
+                  accessoryColor={avatarSettings.accessoryColor ?? "#3b82f6"}
+                  customPartImages={customPartImages}
+                  partPositions={avatarSettings.partPositions as PartPositionsMap}
                 />
               </div>
               <h2 className="text-xl font-bold">{user.displayName}</h2>
               <p className="text-muted-foreground text-sm mb-4">@{user.twitchUsername}</p>
-              
               <Button asChild variant="outline" className="w-full">
                 <Link href="/studio">Edit Avatar</Link>
               </Button>
@@ -63,9 +78,8 @@ export default function Profile() {
             <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
               <h3 className="text-xl font-semibold mb-4">Integration Details</h3>
               <p className="text-muted-foreground mb-6">
-                Share this API URL with your stream bot or custom overlays to pull your latest avatar configuration and TTS voice setting automatically.
+                Share this API URL with your stream bot or custom overlays to pull your latest avatar configuration automatically.
               </p>
-
               <div className="space-y-2 mb-6">
                 <Label>Public API URL</Label>
                 <div className="flex gap-2">
@@ -75,16 +89,16 @@ export default function Profile() {
                   </Button>
                 </div>
               </div>
-
               <div className="p-4 bg-muted/50 rounded-xl text-sm font-mono overflow-x-auto text-muted-foreground">
                 <span className="text-primary">GET</span> {publicApiUrl}
               </div>
-              
               <div className="mt-8 p-4 border border-primary/20 bg-primary/5 rounded-xl flex items-start gap-3">
                 <ExternalLink className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-semibold text-primary mb-1">Developer Note</h4>
-                  <p className="text-sm text-muted-foreground">The API returns a JSON object containing all avatar attributes and the selected <code>voiceId</code> ("{avatarSettings.voiceId}"). No authentication required for this endpoint.</p>
+                  <p className="text-sm text-muted-foreground">
+                    The API returns a JSON object with all avatar attributes and the selected <code>voiceId</code> ("{avatarSettings.voiceId}"). No authentication required.
+                  </p>
                 </div>
               </div>
             </div>

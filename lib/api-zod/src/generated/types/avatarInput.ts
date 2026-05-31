@@ -12,10 +12,13 @@ export interface AvatarInput {
   hairStyle: string;
   hairColor: string;
   eyeStyle: string;
+  eyeColor: string;
   mouthStyle: string;
   outfitStyle: string;
+  outfitColor: string;
   /** @nullable */
   accessory?: string | null;
+  accessoryColor: string;
   voiceId: string;
   partPositions?: PartPositions;
 }

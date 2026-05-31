@@ -503,7 +503,7 @@ export const getGetAvatarPartsUrl = () => {
 }
 
 /**
- * @summary List all active custom avatar parts
+ * @summary List all active avatar parts
  */
 export const getAvatarParts = async ( options?: RequestInit): Promise<PartsListResponse> => {
 
@@ -550,7 +550,7 @@ export type GetAvatarPartsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List all active custom avatar parts
+ * @summary List all active avatar parts
  */
 
 export function useGetAvatarParts<TData = Awaited<ReturnType<typeof getAvatarParts>>, TError = ErrorType<unknown>>(

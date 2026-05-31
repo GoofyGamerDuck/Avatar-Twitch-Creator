@@ -46,9 +46,12 @@ export const GetMyAvatarResponse = zod.object({
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
+  "eyeColor": zod.string(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
-  "accessory": zod.string().nullable(),
+  "outfitColor": zod.string(),
+  "accessory": zod.string().nullish(),
+  "accessoryColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -83,9 +86,12 @@ export const SaveAvatarBody = zod.object({
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
+  "eyeColor": zod.string(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
+  "outfitColor": zod.string(),
   "accessory": zod.string().nullish(),
+  "accessoryColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -118,9 +124,12 @@ export const SaveAvatarResponse = zod.object({
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
+  "eyeColor": zod.string(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
-  "accessory": zod.string().nullable(),
+  "outfitColor": zod.string(),
+  "accessory": zod.string().nullish(),
+  "accessoryColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -165,9 +174,12 @@ export const GetUserAvatarResponse = zod.object({
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
+  "eyeColor": zod.string(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
-  "accessory": zod.string().nullable(),
+  "outfitColor": zod.string(),
+  "accessory": zod.string().nullish(),
+  "accessoryColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -196,7 +208,7 @@ export const GetUserAvatarResponse = zod.object({
 
 
 /**
- * @summary List all active custom avatar parts
+ * @summary List all active avatar parts
  */
 export const GetAvatarPartsResponse = zod.object({
   "parts": zod.array(zod.object({
@@ -207,6 +219,7 @@ export const GetAvatarPartsResponse = zod.object({
   "imageUrl": zod.string(),
   "isActive": zod.boolean().optional(),
   "isBuiltIn": zod.boolean().optional(),
+  "allowColorOverride": zod.boolean().optional(),
   "sortOrder": zod.number()
 }))
 })

@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Upload, Eye, EyeOff, ShieldAlert, Plus, X, Check } from "lucide-react";
+import { Trash2, Upload, Eye, EyeOff, ShieldAlert, Plus, X, Check, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = [
@@ -21,7 +21,8 @@ const CATEGORIES = [
 
 interface AvatarPart {
   id: number; category: string; name: string; label: string;
-  imageUrl: string; isActive: boolean; isBuiltIn: boolean; sortOrder: number;
+  imageUrl: string; isActive: boolean; isBuiltIn: boolean;
+  allowColorOverride: boolean; sortOrder: number;
 }
 
 interface Voice {
@@ -59,7 +60,7 @@ function AuthGate({ onAuth }: { onAuth: (pw: string) => void }) {
             <div className="space-y-1">
               <Label>Password</Label>
               <Input type="password" value={pw} onChange={e => setPw(e.target.value)}
-                placeholder="Enter admin password" autoFocus />
+                placeholder="Enter admin password" autoFocus autoComplete="current-password" />
             </div>
             <Button type="submit" className="w-full" disabled={checking}>
               {checking ? "Checking…" : "Sign In"}
@@ -109,9 +110,7 @@ function PartsPanel({ pw }: { pw: string }) {
       });
       if (!urlRes.ok) throw new Error("Failed to get upload URL");
       const { uploadURL, objectPath } = await urlRes.json() as { uploadURL: string; objectPath: string };
-      const putRes = await fetch(uploadURL, {
-        method: "PUT", headers: { "Content-Type": selectedFile.type }, body: selectedFile,
-      });
+      const putRes = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": selectedFile.type }, body: selectedFile });
       if (!putRes.ok) throw new Error("Storage upload failed");
       const serveUrl = `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
       const saveRes = await fetch("/api/admin/parts", {
@@ -129,11 +128,11 @@ function PartsPanel({ pw }: { pw: string }) {
     } finally { setUploading(false); }
   }
 
-  async function toggleActive(part: AvatarPart) {
-    await fetch(`/api/admin/parts/${part.id}`, {
+  async function patchPart(id: number, patch: Partial<{ isActive: boolean; allowColorOverride: boolean }>) {
+    await fetch(`/api/admin/parts/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": pw },
-      body: JSON.stringify({ isActive: !part.isActive }),
+      body: JSON.stringify(patch),
     });
     await loadParts();
   }
@@ -150,7 +149,7 @@ function PartsPanel({ pw }: { pw: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Upload form */}
+      {/* Upload */}
       <Card>
         <CardHeader><CardTitle className="text-base">Upload Custom Part</CardTitle></CardHeader>
         <CardContent>
@@ -171,8 +170,7 @@ function PartsPanel({ pw }: { pw: string }) {
             </div>
             <div className="space-y-1">
               <Label>Display label</Label>
-              <Input placeholder="e.g. Curly Custom" value={newLabel}
-                onChange={e => setNewLabel(e.target.value)} />
+              <Input placeholder="e.g. Curly Custom" value={newLabel} onChange={e => setNewLabel(e.target.value)} />
             </div>
             <div className="space-y-1">
               <Label>Image file</Label>
@@ -206,17 +204,30 @@ function PartsPanel({ pw }: { pw: string }) {
       {builtins.length > 0 && (
         <div>
           <p className="text-sm font-medium text-muted-foreground mb-3">Built-in (SVG)</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {builtins.map(part => (
               <div key={part.id}
-                className={`flex items-center justify-between p-2.5 rounded-lg border text-sm ${!part.isActive ? 'opacity-50 bg-muted' : 'bg-card'}`}>
-                <span className="font-medium truncate">{part.label}</span>
-                <button onClick={() => toggleActive(part)} className="ml-2 flex-shrink-0 text-muted-foreground hover:text-foreground">
-                  {part.isActive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </button>
+                className={`flex items-center justify-between p-2.5 rounded-lg border text-sm gap-2 ${!part.isActive ? 'opacity-50 bg-muted' : 'bg-card'}`}>
+                <span className="font-medium truncate flex-1">{part.label}</span>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => patchPart(part.id, { allowColorOverride: !part.allowColorOverride })}
+                    title={part.allowColorOverride ? "Colour override enabled" : "Colour override disabled"}
+                    className={`p-1 rounded transition-colors ${part.allowColorOverride ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <Palette className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => patchPart(part.id, { isActive: !part.isActive })}
+                    className="p-1 rounded text-muted-foreground hover:text-foreground">
+                    {part.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            <span className="text-primary">🎨</span> = users can change colour for this part.
+            Click the palette icon to toggle.
+          </p>
         </div>
       )}
 
@@ -234,7 +245,12 @@ function PartsPanel({ pw }: { pw: string }) {
                   <p className="text-xs text-muted-foreground truncate">{part.name}</p>
                   <div className="flex gap-1">
                     <Button size="icon" variant="outline" className="h-7 w-7"
-                      onClick={() => toggleActive(part)}>
+                      title={part.allowColorOverride ? "Colour override on" : "Colour override off"}
+                      onClick={() => patchPart(part.id, { allowColorOverride: !part.allowColorOverride })}>
+                      <Palette className={`h-3 w-3 ${part.allowColorOverride ? 'text-primary' : 'text-muted-foreground'}`} />
+                    </Button>
+                    <Button size="icon" variant="outline" className="h-7 w-7"
+                      onClick={() => patchPart(part.id, { isActive: !part.isActive })}>
                       {part.isActive ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                     </Button>
                     <Button size="icon" variant="outline"
@@ -282,20 +298,12 @@ function VoicesPanel({ pw }: { pw: string }) {
 
   function startEdit(voice: Voice) {
     setEditingId(voice.id);
-    setForm({
-      name: voice.name, description: voice.description,
-      pitch: voice.pitch, rate: voice.rate,
-      browserVoiceName: voice.browserVoiceName ?? "",
-    });
+    setForm({ name: voice.name, description: voice.description, pitch: voice.pitch, rate: voice.rate, browserVoiceName: voice.browserVoiceName ?? "" });
     setShowAdd(false);
   }
 
   async function handleSave() {
-    const body = {
-      name: form.name, description: form.description,
-      pitch: form.pitch, rate: form.rate,
-      browserVoiceName: form.browserVoiceName || null,
-    };
+    const body = { name: form.name, description: form.description, pitch: form.pitch, rate: form.rate, browserVoiceName: form.browserVoiceName || null };
     if (editingId) {
       await fetch(`/api/admin/voices/${editingId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json", "x-admin-password": pw },
@@ -356,26 +364,18 @@ function VoicesPanel({ pw }: { pw: string }) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="flex justify-between">
-              Pitch <span className="text-muted-foreground font-normal">{form.pitch.toFixed(2)}</span>
-            </Label>
+            <Label className="flex justify-between">Pitch <span className="text-muted-foreground font-normal">{form.pitch.toFixed(2)}</span></Label>
             <input type="range" min="0.1" max="2.5" step="0.05" value={form.pitch}
               onChange={e => setForm(f => ({ ...f, pitch: Number(e.target.value) }))}
               className="w-full accent-primary" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0.1 (deep)</span><span>2.5 (high)</span>
-            </div>
+            <div className="flex justify-between text-xs text-muted-foreground"><span>Deep (0.1)</span><span>High (2.5)</span></div>
           </div>
           <div className="space-y-2">
-            <Label className="flex justify-between">
-              Rate <span className="text-muted-foreground font-normal">{form.rate.toFixed(2)}</span>
-            </Label>
+            <Label className="flex justify-between">Rate <span className="text-muted-foreground font-normal">{form.rate.toFixed(2)}</span></Label>
             <input type="range" min="0.1" max="2.0" step="0.05" value={form.rate}
               onChange={e => setForm(f => ({ ...f, rate: Number(e.target.value) }))}
               className="w-full accent-primary" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0.1 (slow)</span><span>2.0 (fast)</span>
-            </div>
+            <div className="flex justify-between text-xs text-muted-foreground"><span>Slow (0.1)</span><span>Fast (2.0)</span></div>
           </div>
         </div>
         <div className="space-y-1">
@@ -404,15 +404,11 @@ function VoicesPanel({ pw }: { pw: string }) {
         </Button>
       )}
       {showAdd && <VoiceForm />}
-
       {loading && <p className="text-muted-foreground text-sm">Loading…</p>}
-
       <div className="space-y-2">
         {voices.map(voice => (
           <div key={voice.id}>
-            {editingId === voice.id ? (
-              <VoiceForm />
-            ) : (
+            {editingId === voice.id ? <VoiceForm /> : (
               <Card className={!voice.isActive ? "opacity-60" : ""}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
@@ -430,16 +426,9 @@ function VoicesPanel({ pw }: { pw: string }) {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <Button size="sm" variant="outline" className="h-8 px-2 text-xs"
-                        onClick={() => previewVoice(voice)}>
-                        ▶ Test
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8"
-                        onClick={() => startEdit(voice)}>
-                        ✎
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8"
-                        onClick={() => toggleActive(voice)}>
+                      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => previewVoice(voice)}>▶ Test</Button>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => startEdit(voice)}>✎</Button>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => toggleActive(voice)}>
                         {voice.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                       </Button>
                       {!voice.isBuiltIn && (
@@ -461,41 +450,28 @@ function VoicesPanel({ pw }: { pw: string }) {
   );
 }
 
-// ── Main Admin page ────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Admin() {
-  const [password, setPassword] = useState<string | null>(() => {
-    const pw = sessionStorage.getItem("adminPw");
-    return pw || null;
-  });
+  const [password, setPassword] = useState<string | null>(() => sessionStorage.getItem("adminPw") || null);
 
-  if (!password) {
-    return <AuthGate onAuth={pw => setPassword(pw)} />;
-  }
+  if (!password) return <AuthGate onAuth={pw => setPassword(pw)} />;
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Avatar Studio Admin</h1>
-        <Button variant="outline" size="sm" onClick={() => {
-          sessionStorage.removeItem("adminPw");
-          setPassword(null);
-        }}>
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("adminPw"); setPassword(null); }}>
           Sign Out
         </Button>
       </header>
-
       <div className="max-w-5xl mx-auto p-6">
         <Tabs defaultValue="parts">
           <TabsList className="mb-6">
             <TabsTrigger value="parts">Avatar Parts</TabsTrigger>
             <TabsTrigger value="voices">Voices</TabsTrigger>
           </TabsList>
-          <TabsContent value="parts">
-            <PartsPanel pw={password} />
-          </TabsContent>
-          <TabsContent value="voices">
-            <VoicesPanel pw={password} />
-          </TabsContent>
+          <TabsContent value="parts"><PartsPanel pw={password} /></TabsContent>
+          <TabsContent value="voices"><VoicesPanel pw={password} /></TabsContent>
         </Tabs>
       </div>
     </div>

@@ -14,5 +14,6 @@ export interface AvatarPart {
   imageUrl: string;
   isActive?: boolean;
   isBuiltIn?: boolean;
+  allowColorOverride?: boolean;
   sortOrder: number;
 }

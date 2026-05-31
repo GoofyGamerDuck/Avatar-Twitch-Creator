@@ -132,7 +132,7 @@ paths:
     get:
       operationId: getAvatarParts
       tags: [parts]
-      summary: List all active custom avatar parts
+      summary: List all active avatar parts
       responses:
         "200":
           description: Active parts
@@ -228,7 +228,7 @@ components:
 
     AvatarSettings:
       type: object
-      required: [id, userId, skinTone, hairStyle, hairColor, eyeStyle, mouthStyle, outfitStyle, accessory, voiceId]
+      required: [id, userId, skinTone, hairStyle, hairColor, eyeStyle, eyeColor, mouthStyle, outfitStyle, outfitColor, accessoryColor, voiceId]
       properties:
         id:
           type: integer
@@ -242,12 +242,18 @@ components:
           type: string
         eyeStyle:
           type: string
+        eyeColor:
+          type: string
         mouthStyle:
           type: string
         outfitStyle:
           type: string
+        outfitColor:
+          type: string
         accessory:
           type: ["string", "null"]
+        accessoryColor:
+          type: string
         voiceId:
           type: string
         partPositions:
@@ -255,7 +261,7 @@ components:
 
     AvatarInput:
       type: object
-      required: [skinTone, hairStyle, hairColor, eyeStyle, mouthStyle, outfitStyle, voiceId]
+      required: [skinTone, hairStyle, hairColor, eyeStyle, eyeColor, mouthStyle, outfitStyle, outfitColor, accessoryColor, voiceId]
       properties:
         skinTone:
           type: string
@@ -265,12 +271,18 @@ components:
           type: string
         eyeStyle:
           type: string
+        eyeColor:
+          type: string
         mouthStyle:
           type: string
         outfitStyle:
           type: string
+        outfitColor:
+          type: string
         accessory:
           type: ["string", "null"]
+        accessoryColor:
+          type: string
         voiceId:
           type: string
         partPositions:
@@ -306,6 +318,8 @@ components:
         isActive:
           type: boolean
         isBuiltIn:
+          type: boolean
+        allowColorOverride:
           type: boolean
         sortOrder:
           type: integer
