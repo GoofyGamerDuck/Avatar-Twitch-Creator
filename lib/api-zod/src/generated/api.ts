@@ -45,9 +45,11 @@ export const GetMyAvatarResponse = zod.object({
   "skinTone": zod.string(),
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
+  "headShape": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
   "eyeWidth": zod.number(),
+  "eyeSpacing": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
@@ -58,6 +60,7 @@ export const GetMyAvatarResponse = zod.object({
   "color": zod.string()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
+  "backgroundColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -81,6 +84,11 @@ export const GetMyAvatarResponse = zod.object({
   "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number().optional()
+}).optional(),
+  "head": zod.object({
   "x": zod.number(),
   "y": zod.number(),
   "scale": zod.number().optional()
@@ -96,9 +104,11 @@ export const SaveAvatarBody = zod.object({
   "skinTone": zod.string(),
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
+  "headShape": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
   "eyeWidth": zod.number(),
+  "eyeSpacing": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
@@ -109,6 +119,7 @@ export const SaveAvatarBody = zod.object({
   "color": zod.string()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
+  "backgroundColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -132,6 +143,11 @@ export const SaveAvatarBody = zod.object({
   "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number().optional()
+}).optional(),
+  "head": zod.object({
   "x": zod.number(),
   "y": zod.number(),
   "scale": zod.number().optional()
@@ -145,9 +161,11 @@ export const SaveAvatarResponse = zod.object({
   "skinTone": zod.string(),
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
+  "headShape": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
   "eyeWidth": zod.number(),
+  "eyeSpacing": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
@@ -158,6 +176,7 @@ export const SaveAvatarResponse = zod.object({
   "color": zod.string()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
+  "backgroundColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -181,6 +200,11 @@ export const SaveAvatarResponse = zod.object({
   "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number().optional()
+}).optional(),
+  "head": zod.object({
   "x": zod.number(),
   "y": zod.number(),
   "scale": zod.number().optional()
@@ -206,9 +230,11 @@ export const GetUserAvatarResponse = zod.object({
   "skinTone": zod.string(),
   "hairStyle": zod.string(),
   "hairColor": zod.string(),
+  "headShape": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
   "eyeWidth": zod.number(),
+  "eyeSpacing": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
@@ -219,6 +245,7 @@ export const GetUserAvatarResponse = zod.object({
   "color": zod.string()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
+  "backgroundColor": zod.string(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
@@ -242,6 +269,11 @@ export const GetUserAvatarResponse = zod.object({
   "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number().optional()
+}).optional(),
+  "head": zod.object({
   "x": zod.number(),
   "y": zod.number(),
   "scale": zod.number().optional()
@@ -290,30 +322,15 @@ export const GetVoicesResponse = zod.object({
 /**
  * @summary Request a presigned URL for file upload
  */
-
-
-
-
-
 export const RequestUploadUrlBody = zod.object({
-  "name": zod.string().min(1),
-  "size": zod.number().min(1),
-  "contentType": zod.string().min(1)
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string()
 })
-
-
-
-
-
 
 export const RequestUploadUrlResponse = zod.object({
   "uploadURL": zod.string(),
-  "objectPath": zod.string(),
-  "metadata": zod.object({
-  "name": zod.string().min(1),
-  "size": zod.number().min(1),
-  "contentType": zod.string().min(1)
-}).optional()
+  "objectPath": zod.string()
 })
 
 

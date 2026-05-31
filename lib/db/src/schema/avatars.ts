@@ -4,18 +4,20 @@ import { z } from "zod/v4";
 import { usersTable } from "./users";
 
 export interface PartPosition { x: number; y: number; scale?: number; }
-export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory', PartPosition>>;
+export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory' | 'head', PartPosition>>;
 export interface AccessoryItem { name: string; color: string; }
 
 export const avatarSettingsTable = pgTable("avatar_settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().unique().references(() => usersTable.id, { onDelete: "cascade" }),
-  skinTone: text("skin_tone").notNull().default("medium"),
+  skinTone: text("skin_tone").notNull().default("#D6A371"),
   hairStyle: text("hair_style").notNull().default("short"),
-  hairColor: text("hair_color").notNull().default("brown"),
+  hairColor: text("hair_color").notNull().default("#4A2F1D"),
+  headShape: text("head_shape").notNull().default("circle"),
   eyeStyle: text("eye_style").notNull().default("default"),
   eyeColor: text("eye_color").notNull().default("#1e1b4b"),
-  eyeWidth: doublePrecision("eye_width").notNull().default(1.0),
+  eyeWidth: doublePrecision("eye_width").notNull().default(1.0),     // eye size (individual eye scale)
+  eyeSpacing: doublePrecision("eye_spacing").notNull().default(1.0), // distance between eyes
   mouthStyle: text("mouth_style").notNull().default("smile"),
   outfitStyle: text("outfit_style").notNull().default("casual"),
   outfitColor: text("outfit_color").notNull().default("#2563eb"),
@@ -23,6 +25,7 @@ export const avatarSettingsTable = pgTable("avatar_settings", {
   accessoryColor: text("accessory_color").notNull().default("#3b82f6"),
   accessories: jsonb("accessories").$type<AccessoryItem[]>().default([]),
   layerOrder: jsonb("layer_order").$type<string[]>().default([]),
+  backgroundColor: text("background_color").notNull().default("#1e1b4b"),
   voiceId: text("voice_id").notNull().default("alloy"),
   partPositions: jsonb("part_positions").$type<PartPositionsMap>().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

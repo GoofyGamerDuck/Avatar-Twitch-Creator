@@ -13,4 +13,5 @@ export interface PartPositions {
   mouth?: PartPosition;
   outfit?: PartPosition;
   accessory?: PartPosition;
+  head?: PartPosition;
 }

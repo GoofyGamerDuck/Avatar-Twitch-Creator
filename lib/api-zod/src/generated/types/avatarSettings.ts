@@ -14,9 +14,11 @@ export interface AvatarSettings {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape: string;
   eyeStyle: string;
   eyeColor: string;
   eyeWidth: number;
+  eyeSpacing: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
@@ -25,6 +27,7 @@ export interface AvatarSettings {
   accessoryColor: string;
   accessories?: AccessoryItem[];
   layerOrder?: string[];
+  backgroundColor: string;
   voiceId: string;
   partPositions?: PartPositions;
 }

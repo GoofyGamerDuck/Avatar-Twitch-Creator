@@ -30,6 +30,7 @@ export interface PartPositions {
   mouth?: PartPosition;
   outfit?: PartPosition;
   accessory?: PartPosition;
+  head?: PartPosition;
 }
 
 export interface AccessoryItem {
@@ -43,9 +44,11 @@ export interface AvatarSettings {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape: string;
   eyeStyle: string;
   eyeColor: string;
   eyeWidth: number;
+  eyeSpacing: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
@@ -54,6 +57,7 @@ export interface AvatarSettings {
   accessoryColor: string;
   accessories?: AccessoryItem[];
   layerOrder?: string[];
+  backgroundColor: string;
   voiceId: string;
   partPositions?: PartPositions;
 }
@@ -62,9 +66,11 @@ export interface AvatarInput {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape: string;
   eyeStyle: string;
   eyeColor: string;
   eyeWidth: number;
+  eyeSpacing: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
@@ -73,6 +79,7 @@ export interface AvatarInput {
   accessoryColor: string;
   accessories?: AccessoryItem[];
   layerOrder?: string[];
+  backgroundColor: string;
   voiceId: string;
   partPositions?: PartPositions;
 }
@@ -119,18 +126,14 @@ export interface VoicesListResponse {
 }
 
 export interface UploadUrlRequest {
-  /** @minLength 1 */
   name: string;
-  /** @minimum 1 */
   size: number;
-  /** @minLength 1 */
   contentType: string;
 }
 
 export interface UploadUrlResponse {
   uploadURL: string;
   objectPath: string;
-  metadata?: UploadUrlRequest;
 }
 
 export interface SuccessResponse {

@@ -1,39 +1,47 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { SKIN_TONES, HAIR_COLORS } from '../lib/constants';
 
 export interface PartPosition { x: number; y: number; scale?: number; }
-export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory', PartPosition>>;
+export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory' | 'head', PartPosition>>;
 export interface AccessoryItem { name: string; color: string; }
 
 interface AvatarPreviewProps {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape?: string;
   eyeStyle: string;
   eyeColor?: string;
-  eyeWidth?: number;
+  eyeWidth?: number;    // eye size scale (individual eye)
+  eyeSpacing?: number;  // distance between eyes multiplier
   mouthStyle: string;
   outfitStyle: string;
   outfitColor?: string;
-  // single accessory (backward compat / overlay)
   accessory?: string | null;
   accessoryColor?: string;
-  // multi-accessory (new)
   accessories?: AccessoryItem[];
+  backgroundColor?: string;
   customPartImages?: Record<string, string>;
   partPositions?: PartPositionsMap | null;
   layerOrder?: string[];
-  size?: string;
   className?: string;
 }
 
-const PART_CENTERS = {
+// Resolve old ID-based colors to hex for backward compat
+function resolveHex(value: string, map: { id: string; hex: string }[]): string {
+  if (!value) return map[0].hex;
+  if (value.startsWith('#')) return value;
+  return map.find(m => m.id === value)?.hex ?? map[0].hex;
+}
+
+const PART_CENTERS: Record<string, { cx: number; cy: number }> = {
   hair:      { cx: 100, cy: 65 },
   eyes:      { cx: 100, cy: 86 },
   mouth:     { cx: 100, cy: 112 },
   outfit:    { cx: 100, cy: 160 },
   accessory: { cx: 100, cy: 70 },
-} as const;
+  head:      { cx: 100, cy: 90 },
+};
 
 function partTransform(pos: PartPosition | undefined, cx: number, cy: number): string | undefined {
   const dx = pos?.x ?? 0;
@@ -44,77 +52,50 @@ function partTransform(pos: PartPosition | undefined, cx: number, cy: number): s
   return `translate(${dx} ${dy}) translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`;
 }
 
-const ABOVE_HEAD_LAYERS = ['fronthair', 'eyes', 'mouth', 'accessories'] as const;
-
-function BackHair({ style, color, pos }: { style: string; color: string; pos?: PartPosition }) {
-  if (!['long', 'wavy', 'ponytail'].includes(style)) return null;
-  const tr = partTransform(pos, PART_CENTERS.hair.cx, PART_CENTERS.hair.cy);
-  return (
-    <g fill={color} transform={tr}>
-      {style === 'long' && (
-        <><path d="M 57 88 Q 50 115 48 158 Q 62 150 68 128 L 70 88" />
-          <path d="M 143 88 Q 150 115 152 158 Q 138 150 132 128 L 130 88" /></>
-      )}
-      {style === 'wavy' && (
-        <><path d="M 57 88 Q 46 100 50 116 Q 44 132 50 152 Q 64 146 64 132 Q 58 116 64 100 L 66 88" />
-          <path d="M 143 88 Q 154 100 150 116 Q 156 132 150 152 Q 136 146 136 132 Q 142 116 136 100 L 134 88" /></>
-      )}
-      {style === 'ponytail' && (
-        <path d="M 93 46 Q 88 85 86 125 Q 90 155 100 162 Q 110 155 114 125 Q 112 85 107 46" />
-      )}
-    </g>
-  );
+// Returns the SVG shape for a given head shape
+function headShapeEl(shape: string, fill: string): React.ReactNode {
+  switch (shape) {
+    case 'oval':           return <ellipse cx="100" cy="90" rx="38" ry="50" fill={fill} />;
+    case 'wide':           return <ellipse cx="100" cy="90" rx="56" ry="40" fill={fill} />;
+    case 'square':         return <rect x="54" y="44" width="92" height="92" fill={fill} />;
+    case 'rounded-square': return <rect x="54" y="44" width="92" height="92" rx="20" fill={fill} />;
+    case 'diamond':        return <polygon points="100,40 150,90 100,140 50,90" fill={fill} />;
+    default:               return <circle cx="100" cy="90" r="46" fill={fill} />;
+  }
+}
+function headClipEl(shape: string): React.ReactNode {
+  switch (shape) {
+    case 'oval':           return <ellipse cx="100" cy="90" rx="40" ry="52" />;
+    case 'wide':           return <ellipse cx="100" cy="90" rx="58" ry="42" />;
+    case 'square':         return <rect x="52" y="42" width="96" height="96" />;
+    case 'rounded-square': return <rect x="52" y="42" width="96" height="96" rx="20" />;
+    case 'diamond':        return <polygon points="100,38 152,90 100,142 48,90" />;
+    default:               return <circle cx="100" cy="90" r="48" />;
+  }
 }
 
-function FrontHair({ style, color, customUrl, pos }: {
-  style: string; color: string; customUrl?: string; pos?: PartPosition;
-}) {
-  const tr = partTransform(pos, PART_CENTERS.hair.cx, PART_CENTERS.hair.cy);
+function EyeShape({ style, cx, cy, color }: { style: string; cx: number; cy: number; color: string }) {
+  if (style === 'round') return (
+    <g fill={color}><circle cx={cx} cy={cy} r="5.5" /><circle cx={cx-2} cy={cy-2} r="1.5" fill="white" opacity="0.6" /></g>
+  );
+  if (style === 'sleepy') return (
+    <path fill={color} d={`M ${cx-7} ${cy} Q ${cx} ${cy-6} ${cx+7} ${cy} Q ${cx} ${cy-2} ${cx-7} ${cy}`} />
+  );
+  if (style === 'almond') return (
+    <path fill={color} d={`M ${cx-7} ${cy} Q ${cx} ${cy-6} ${cx+7} ${cy} Q ${cx} ${cy+6} ${cx-7} ${cy}`} />
+  );
+  if (style === 'hooded') return (
+    <><ellipse cx={cx} cy={cy+1} rx="7" ry="5" fill={color} />
+      <path d={`M ${cx-7} ${cy-2} Q ${cx} ${cy-6} ${cx+7} ${cy-2}`} fill="rgba(0,0,0,0.15)" /></>
+  );
+  if (style === 'monolid') return <rect x={cx-7} y={cy-4} width="14" height="8" rx="4" fill={color} />;
   return (
-    <g transform={tr}>
-      {customUrl ? (
-        <image href={customUrl} x="48" y="38" width="104" height="70"
-          preserveAspectRatio="xMidYMid meet" clipPath="url(#headClip)" />
-      ) : (
-        <g fill={color}>
-          {['short', 'long'].includes(style) && (
-            <path d="M 57 88 Q 57 37 100 37 Q 143 37 143 88 Q 138 62 100 48 Q 62 62 57 88" />
-          )}
-          {style === 'wavy' && (
-            <path d="M 57 88 Q 57 37 100 37 Q 143 37 143 88 Q 138 62 100 48 Q 62 62 57 88" />
-          )}
-          {style === 'curly' && (
-            <>
-              <circle cx="68" cy="55" r="16" /><circle cx="100" cy="42" r="18" />
-              <circle cx="132" cy="55" r="16" /><circle cx="58" cy="78" r="14" />
-              <circle cx="142" cy="78" r="14" />
-              <path d="M 54 90 Q 54 60 100 45 Q 146 60 146 90" />
-            </>
-          )}
-          {style === 'bun' && (
-            <><path d="M 57 90 Q 57 50 100 50 Q 143 50 143 90 Q 138 68 100 56 Q 62 68 57 90" />
-              <circle cx="100" cy="43" r="13" /></>
-          )}
-          {style === 'ponytail' && (
-            <><path d="M 57 90 Q 57 38 100 38 Q 143 38 143 90 Q 138 62 100 48 Q 62 62 57 90" />
-              <rect x="95" y="42" width="10" height="12" rx="3" opacity="0.7" /></>
-          )}
-          {style === 'buzz' && (
-            <path d="M 57 90 Q 57 45 100 43 Q 143 45 143 90 Q 141 72 100 62 Q 59 72 57 90" opacity="0.85" />
-          )}
-          {!['short','long','wavy','curly','bun','ponytail','buzz'].includes(style) && (
-            <path d="M 55 90 Q 55 38 100 38 Q 145 38 145 90 Q 140 65 100 50 Q 60 65 55 90" />
-          )}
-        </g>
-      )}
-    </g>
+    <g fill={color}><ellipse cx={cx} cy={cy} rx="6.5" ry="5" /><circle cx={cx-2} cy={cy-2} r="1.5" fill="white" opacity="0.6" /></g>
   );
 }
 
 function SingleAccessory({ name, color, customUrl }: { name: string; color: string; customUrl?: string }) {
-  if (customUrl) {
-    return <image href={customUrl} x="68" y="60" width="64" height="40" preserveAspectRatio="xMidYMid meet" />;
-  }
+  if (customUrl) return <image href={customUrl} x="68" y="60" width="64" height="40" preserveAspectRatio="xMidYMid meet" />;
   if (name === 'glasses') return (
     <g stroke={color} strokeWidth="2" fill={color} fillOpacity="0.15">
       <circle cx="83" cy="86" r="11" /><circle cx="117" cy="86" r="11" />
@@ -133,10 +114,7 @@ function SingleAccessory({ name, color, customUrl }: { name: string; color: stri
     </g>
   );
   if (name === 'hat') return (
-    <g fill={color}>
-      <rect x="63" y="54" width="74" height="11" rx="4" />
-      <rect x="76" y="30" width="48" height="27" rx="5" />
-    </g>
+    <g fill={color}><rect x="63" y="54" width="74" height="11" rx="4" /><rect x="76" y="30" width="48" height="27" rx="5" /></g>
   );
   if (name === 'headphones') return (
     <g stroke={color} strokeWidth="3" fill="none">
@@ -157,105 +135,68 @@ function SingleAccessory({ name, color, customUrl }: { name: string; color: stri
 }
 
 const AvatarPreview: React.FC<AvatarPreviewProps> = ({
-  skinTone, hairStyle, hairColor,
-  eyeStyle, eyeColor = "#1e1b4b", eyeWidth = 1.0,
+  skinTone, hairStyle, hairColor, headShape = 'circle',
+  eyeStyle, eyeColor = "#1e1b4b", eyeWidth = 1.0, eyeSpacing = 1.0,
   mouthStyle, outfitStyle, outfitColor = "#2563eb",
   accessory, accessoryColor = "#3b82f6",
-  accessories = [],
+  accessories = [], backgroundColor = "#1e1b4b",
   customPartImages = {}, partPositions, layerOrder = [],
   className = "",
 }) => {
-  const skinHex = SKIN_TONES.find(s => s.id === skinTone)?.hex ?? SKIN_TONES[0].hex;
-  const hairHex = HAIR_COLORS.find(h => h.id === hairColor)?.hex ?? HAIR_COLORS[0].hex;
-  const positions: PartPositionsMap = partPositions ?? {};
+  const uidRef = useRef(`av${Math.random().toString(36).slice(2, 7)}`);
+  const uid = uidRef.current;
+  const clipId = `hc-${uid}`;
 
-  // Resolve accessories (prefer new array, fall back to single)
-  const resolvedAccessories: AccessoryItem[] = accessories.length > 0
+  const skinHex = resolveHex(skinTone, SKIN_TONES);
+  const hairHex = resolveHex(hairColor, HAIR_COLORS);
+  const pos: PartPositionsMap = partPositions ?? {};
+
+  const resolvedAcc: AccessoryItem[] = accessories.length > 0
     ? accessories
     : (accessory && accessory !== 'none' ? [{ name: accessory, color: accessoryColor }] : []);
 
-  // Resolve face layer order
-  const resolvedLayerOrder = (() => {
-    const valid = ABOVE_HEAD_LAYERS.filter(n => !layerOrder.includes(n));
-    const ordered = layerOrder.filter(n => ABOVE_HEAD_LAYERS.includes(n as typeof ABOVE_HEAD_LAYERS[number]));
-    return [...ordered, ...valid] as typeof ABOVE_HEAD_LAYERS[number][];
+  // Build full ordered layer list
+  const accKeys = resolvedAcc.map((_, i) => `acc_${i}`);
+  const ALL_KEYS = ['backhair', 'outfit', 'head', 'fronthair', 'eyes', 'mouth', ...accKeys];
+  const resolvedOrder = (() => {
+    if (!layerOrder || layerOrder.length === 0) return ALL_KEYS;
+    const valid = new Set(ALL_KEYS);
+    const ordered = layerOrder.filter(k => valid.has(k));
+    const missing = ALL_KEYS.filter(k => !ordered.includes(k));
+    return [...ordered, ...missing];
   })();
 
-  // ── Individual layer renderers ──────────────────────────────────────────────
-  function renderFrontHair() {
+  // ── Layer renderers ─────────────────────────────────────────────────────────
+  function renderBackHair(): React.ReactNode {
+    if (hairStyle === 'none') return null;
+    if (!['long', 'wavy', 'ponytail'].includes(hairStyle)) return null;
+    const tr = partTransform(pos.hair, PART_CENTERS.hair.cx, PART_CENTERS.hair.cy);
     return (
-      <FrontHair key="fronthair" style={hairStyle} color={hairHex}
-        customUrl={customPartImages[hairStyle]}
-        pos={positions.hair} />
-    );
-  }
-
-  function renderEyes() {
-    const tr = partTransform(positions.eyes, PART_CENTERS.eyes.cx, PART_CENTERS.eyes.cy);
-    const customEyeUrl = customPartImages[eyeStyle];
-    return (
-      <g key="eyes" transform={tr}>
-        {customEyeUrl ? (
-          <image href={customEyeUrl} x="70" y="76" width="60" height="22" preserveAspectRatio="xMidYMid meet" />
-        ) : (
-          <g>
-            {/* Left eye */}
-            <g transform={`translate(83 86) scale(${eyeWidth} 1) translate(-83 -86)`}>
-              <EyeShape style={eyeStyle} cx={83} cy={86} color={eyeColor} />
-            </g>
-            {/* Right eye */}
-            <g transform={`translate(117 86) scale(${eyeWidth} 1) translate(-117 -86)`}>
-              <EyeShape style={eyeStyle} cx={117} cy={86} color={eyeColor} />
-            </g>
-          </g>
+      <g key="backhair" fill={hairHex} transform={tr}>
+        {hairStyle === 'long' && (
+          <><path d="M 57 88 Q 50 115 48 158 Q 62 150 68 128 L 70 88" />
+            <path d="M 143 88 Q 150 115 152 158 Q 138 150 132 128 L 130 88" /></>
+        )}
+        {hairStyle === 'wavy' && (
+          <><path d="M 57 88 Q 46 100 50 116 Q 44 132 50 152 Q 64 146 64 132 Q 58 116 64 100 L 66 88" />
+            <path d="M 143 88 Q 154 100 150 116 Q 156 132 150 152 Q 136 146 136 132 Q 142 116 136 100 L 134 88" /></>
+        )}
+        {hairStyle === 'ponytail' && (
+          <path d="M 93 46 Q 88 85 86 125 Q 90 155 100 162 Q 110 155 114 125 Q 112 85 107 46" />
         )}
       </g>
     );
   }
 
-  function renderMouth() {
-    const tr = partTransform(positions.mouth, PART_CENTERS.mouth.cx, PART_CENTERS.mouth.cy);
-    const customMouthUrl = customPartImages[mouthStyle];
-    const strokeColor = "#2d1a0e"; // fixed dark — intentionally separate from eyeColor
-    return (
-      <g key="mouth" transform={tr}>
-        {customMouthUrl ? (
-          <image href={customMouthUrl} x="82" y="104" width="36" height="20" preserveAspectRatio="xMidYMid meet" />
-        ) : (
-          <g stroke={strokeColor} strokeWidth="2" fill="transparent" strokeLinecap="round">
-            {mouthStyle === 'smile' && <path d="M 88 110 Q 100 122 112 110" />}
-            {mouthStyle === 'neutral' && <line x1="88" y1="112" x2="112" y2="112" />}
-            {mouthStyle === 'smirk' && <path d="M 88 113 Q 98 108 112 110" />}
-            {mouthStyle === 'open' && <ellipse cx="100" cy="113" rx="9" ry="6" fill="#cc5c5c" stroke={strokeColor} strokeWidth="1.5" />}
-            {mouthStyle === 'wide-smile' && <path d="M 84 109 Q 100 126 116 109" />}
-            {!['smile','neutral','smirk','open','wide-smile'].includes(mouthStyle) && <path d="M 88 110 Q 100 122 112 110" />}
-          </g>
-        )}
-      </g>
-    );
-  }
-
-  function renderAccessories() {
-    if (resolvedAccessories.length === 0) return null;
-    const tr = partTransform(positions.accessory, PART_CENTERS.accessory.cx, PART_CENTERS.accessory.cy);
-    return (
-      <g key="accessories" transform={tr}>
-        {resolvedAccessories.map((acc, i) => (
-          <SingleAccessory key={`${acc.name}-${i}`} name={acc.name} color={acc.color}
-            customUrl={customPartImages[acc.name]} />
-        ))}
-      </g>
-    );
-  }
-
-  function renderOutfit() {
-    const tr = partTransform(positions.outfit, PART_CENTERS.outfit.cx, PART_CENTERS.outfit.cy);
-    const customOutfitUrl = customPartImages[outfitStyle];
+  function renderOutfit(): React.ReactNode {
+    if (outfitStyle === 'none') return null;
+    const tr = partTransform(pos.outfit, PART_CENTERS.outfit.cx, PART_CENTERS.outfit.cy);
+    const url = customPartImages[outfitStyle];
     return (
       <g key="outfit" transform={tr}>
-        {customOutfitUrl ? (
-          <image href={customOutfitUrl} x="35" y="125" width="130" height="75"
-            preserveAspectRatio="xMidYMid meet" clipPath="url(#bodyClip)" />
+        {url ? (
+          <image href={url} x="35" y="125" width="130" height="75"
+            preserveAspectRatio="xMidYMid meet" clipPath={`url(#bc-${uid})`} />
         ) : (
           <g fill={outfitColor}>
             {outfitStyle === 'hoodie' && (
@@ -267,7 +208,14 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
               <><path d="M 60 200 Q 60 138 100 136 Q 140 138 140 200" />
                 <path d="M 78 200 L 78 155 L 122 155 L 122 200" opacity="0.35" /></>
             )}
-            {!['hoodie','dress','sporty'].includes(outfitStyle) && (
+            {outfitStyle === 'formal' && (
+              <><path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" />
+                <path d="M 97 136 L 93 155 L 100 168 L 107 155 L 103 136" fill="white" opacity="0.4" /></>
+            )}
+            {outfitStyle === 'shirt' && (
+              <path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" />
+            )}
+            {!['hoodie','dress','sporty','formal','shirt','none'].includes(outfitStyle) && (
               <path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" />
             )}
           </g>
@@ -276,72 +224,139 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     );
   }
 
-  const layerRenderers: Record<string, () => React.ReactNode> = {
-    fronthair: renderFrontHair,
-    eyes: renderEyes,
-    mouth: renderMouth,
-    accessories: renderAccessories,
-  };
+  function renderHead(): React.ReactNode {
+    const tr = partTransform(pos.head, PART_CENTERS.head.cx, PART_CENTERS.head.cy);
+    return <g key="head" transform={tr}>{headShapeEl(headShape, skinHex)}</g>;
+  }
+
+  function renderFrontHair(): React.ReactNode {
+    if (hairStyle === 'none') return null;
+    const tr = partTransform(pos.hair, PART_CENTERS.hair.cx, PART_CENTERS.hair.cy);
+    const url = customPartImages[hairStyle];
+    return (
+      <g key="fronthair" transform={tr}>
+        {url ? (
+          <image href={url} x="48" y="38" width="104" height="70"
+            preserveAspectRatio="xMidYMid meet" clipPath={`url(#${clipId})`} />
+        ) : (
+          <g fill={hairHex}>
+            {['short','long','wavy'].includes(hairStyle) && (
+              <path d="M 57 88 Q 57 37 100 37 Q 143 37 143 88 Q 138 62 100 48 Q 62 62 57 88" />
+            )}
+            {hairStyle === 'curly' && (
+              <><circle cx="68" cy="55" r="16" /><circle cx="100" cy="42" r="18" />
+                <circle cx="132" cy="55" r="16" /><circle cx="58" cy="78" r="14" />
+                <circle cx="142" cy="78" r="14" />
+                <path d="M 54 90 Q 54 60 100 45 Q 146 60 146 90" /></>
+            )}
+            {hairStyle === 'bun' && (
+              <><path d="M 57 90 Q 57 50 100 50 Q 143 50 143 90 Q 138 68 100 56 Q 62 68 57 90" />
+                <circle cx="100" cy="43" r="13" /></>
+            )}
+            {hairStyle === 'ponytail' && (
+              <><path d="M 57 90 Q 57 38 100 38 Q 143 38 143 90 Q 138 62 100 48 Q 62 62 57 90" />
+                <rect x="95" y="42" width="10" height="12" rx="3" opacity="0.7" /></>
+            )}
+            {hairStyle === 'buzz' && (
+              <path d="M 57 90 Q 57 45 100 43 Q 143 45 143 90 Q 141 72 100 62 Q 59 72 57 90" opacity="0.85" />
+            )}
+          </g>
+        )}
+      </g>
+    );
+  }
+
+  function renderEyes(): React.ReactNode {
+    if (eyeStyle === 'none') return null;
+    const spacing = eyeSpacing ?? 1.0;
+    const size = eyeWidth ?? 1.0;
+    const leftX = 100 - 17 * spacing;
+    const rightX = 100 + 17 * spacing;
+    const tr = partTransform(pos.eyes, PART_CENTERS.eyes.cx, PART_CENTERS.eyes.cy);
+    const url = customPartImages[eyeStyle];
+    return (
+      <g key="eyes" transform={tr}>
+        {url ? (
+          <image href={url} x="70" y="76" width="60" height="22" preserveAspectRatio="xMidYMid meet" />
+        ) : (
+          <>
+            <g transform={`translate(${leftX} 86) scale(${size}) translate(${-leftX} -86)`}>
+              <EyeShape style={eyeStyle} cx={leftX} cy={86} color={eyeColor} />
+            </g>
+            <g transform={`translate(${rightX} 86) scale(${size}) translate(${-rightX} -86)`}>
+              <EyeShape style={eyeStyle} cx={rightX} cy={86} color={eyeColor} />
+            </g>
+          </>
+        )}
+      </g>
+    );
+  }
+
+  function renderMouth(): React.ReactNode {
+    if (mouthStyle === 'none') return null;
+    const tr = partTransform(pos.mouth, PART_CENTERS.mouth.cx, PART_CENTERS.mouth.cy);
+    const url = customPartImages[mouthStyle];
+    const stroke = "#2d1a0e";
+    return (
+      <g key="mouth" transform={tr}>
+        {url ? (
+          <image href={url} x="82" y="104" width="36" height="20" preserveAspectRatio="xMidYMid meet" />
+        ) : (
+          <g stroke={stroke} strokeWidth="2" fill="transparent" strokeLinecap="round">
+            {mouthStyle === 'smile'      && <path d="M 88 110 Q 100 122 112 110" />}
+            {mouthStyle === 'neutral'    && <line x1="88" y1="112" x2="112" y2="112" />}
+            {mouthStyle === 'smirk'      && <path d="M 88 113 Q 98 108 112 110" />}
+            {mouthStyle === 'open'       && <ellipse cx="100" cy="113" rx="9" ry="6" fill="#cc5c5c" stroke={stroke} strokeWidth="1.5" />}
+            {mouthStyle === 'wide-smile' && <path d="M 84 109 Q 100 126 116 109" />}
+            {!['smile','neutral','smirk','open','wide-smile','none'].includes(mouthStyle) && <path d="M 88 110 Q 100 122 112 110" />}
+          </g>
+        )}
+      </g>
+    );
+  }
+
+  function renderAccessory(acc: AccessoryItem, idx: number): React.ReactNode {
+    const tr = partTransform(pos.accessory, PART_CENTERS.accessory.cx, PART_CENTERS.accessory.cy);
+    return (
+      <g key={`acc_${idx}`} transform={tr}>
+        <SingleAccessory name={acc.name} color={acc.color} customUrl={customPartImages[acc.name]} />
+      </g>
+    );
+  }
+
+  function renderLayer(key: string): React.ReactNode {
+    switch (key) {
+      case 'backhair':  return renderBackHair();
+      case 'outfit':    return renderOutfit();
+      case 'head':      return renderHead();
+      case 'fronthair': return renderFrontHair();
+      case 'eyes':      return renderEyes();
+      case 'mouth':     return renderMouth();
+      default: {
+        if (key.startsWith('acc_')) {
+          const idx = parseInt(key.slice(4), 10);
+          if (!isNaN(idx) && idx < resolvedAcc.length) return renderAccessory(resolvedAcc[idx], idx);
+        }
+        return null;
+      }
+    }
+  }
 
   return (
-    <div className={`relative w-full h-full aspect-square bg-muted rounded-2xl overflow-hidden flex items-center justify-center border border-border shadow-inner ${className}`}>
+    <div className={`relative w-full h-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center border border-border shadow-inner ${className}`}
+      style={{ backgroundColor }}>
       <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md">
         <defs>
-          <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="var(--background)" stopOpacity="0" />
-          </radialGradient>
-          <clipPath id="headClip"><circle cx="100" cy="90" r="52" /></clipPath>
-          <clipPath id="bodyClip"><rect x="35" y="122" width="130" height="78" /></clipPath>
+          <clipPath id={clipId}>{headClipEl(headShape)}</clipPath>
+          <clipPath id={`bc-${uid}`}><rect x="35" y="122" width="130" height="78" /></clipPath>
         </defs>
-
-        {/* BG */}
-        <circle cx="100" cy="100" r="90" fill="url(#bgGlow)" opacity="0.5" />
-
-        {/* Fixed: back hair */}
-        <BackHair style={hairStyle} color={hairHex} pos={positions.hair} />
-
-        {/* Fixed: outfit (body, always behind head) */}
-        {renderOutfit()}
-
-        {/* Fixed: head */}
-        <circle cx="100" cy="90" r="46" fill={skinHex} />
-
-        {/* Reorderable face layers */}
-        {resolvedLayerOrder.map(name => layerRenderers[name]?.() ?? null)}
+        {resolvedOrder.map(key => (
+          <React.Fragment key={key}>{renderLayer(key)}</React.Fragment>
+        ))}
       </svg>
     </div>
   );
 };
-
-function EyeShape({ style, cx, cy, color }: { style: string; cx: number; cy: number; color: string }) {
-  if (style === 'round') return (
-    <g fill={color}>
-      <circle cx={cx} cy={cy} r="5.5" />
-      <circle cx={cx - 2} cy={cy - 2} r="1.5" fill="white" opacity="0.6" />
-    </g>
-  );
-  if (style === 'sleepy') return (
-    <path fill={color} d={`M ${cx-7} ${cy} Q ${cx} ${cy-6} ${cx+7} ${cy} Q ${cx} ${cy-2} ${cx-7} ${cy}`} />
-  );
-  if (style === 'almond') return (
-    <path fill={color} d={`M ${cx-7} ${cy} Q ${cx} ${cy-6} ${cx+7} ${cy} Q ${cx} ${cy+6} ${cx-7} ${cy}`} />
-  );
-  if (style === 'hooded') return (
-    <>
-      <ellipse cx={cx} cy={cy+1} rx="7" ry="5" fill={color} />
-      <path d={`M ${cx-7} ${cy-2} Q ${cx} ${cy-6} ${cx+7} ${cy-2}`} fill="rgba(0,0,0,0.15)" />
-    </>
-  );
-  if (style === 'monolid') return <rect x={cx-7} y={cy-4} width="14" height="8" rx="4" fill={color} />;
-  // default
-  return (
-    <g fill={color}>
-      <ellipse cx={cx} cy={cy} rx="6.5" ry="5" />
-      <circle cx={cx-2} cy={cy-2} r="1.5" fill="white" opacity="0.6" />
-    </g>
-  );
-}
 
 export { AvatarPreview };
 export default AvatarPreview;

@@ -12,9 +12,11 @@ export interface AvatarInput {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape: string;
   eyeStyle: string;
   eyeColor: string;
   eyeWidth: number;
+  eyeSpacing: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
@@ -23,6 +25,7 @@ export interface AvatarInput {
   accessoryColor: string;
   accessories?: AccessoryItem[];
   layerOrder?: string[];
+  backgroundColor: string;
   voiceId: string;
   partPositions?: PartPositions;
 }

@@ -181,7 +181,7 @@ function MessageRow({ msg }: { msg: ChatMessage }) {
             mouthStyle={msg.avatar.mouthStyle}
             outfitStyle={msg.avatar.outfitStyle}
             accessory={msg.avatar.accessory}
-            size="sm"
+
           />
         ) : msg.profileImageUrl ? (
           <img

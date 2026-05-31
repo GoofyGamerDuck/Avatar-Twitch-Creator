@@ -171,12 +171,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UploadUrlResponse"
-        "400":
-          description: Invalid fields
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -226,6 +220,8 @@ components:
           $ref: "#/components/schemas/PartPosition"
         accessory:
           $ref: "#/components/schemas/PartPosition"
+        head:
+          $ref: "#/components/schemas/PartPosition"
 
     AccessoryItem:
       type: object
@@ -238,7 +234,7 @@ components:
 
     AvatarSettings:
       type: object
-      required: [id, userId, skinTone, hairStyle, hairColor, eyeStyle, eyeColor, eyeWidth, mouthStyle, outfitStyle, outfitColor, accessoryColor, voiceId]
+      required: [id, userId, skinTone, hairStyle, hairColor, headShape, eyeStyle, eyeColor, eyeWidth, eyeSpacing, mouthStyle, outfitStyle, outfitColor, accessoryColor, backgroundColor, voiceId]
       properties:
         id:
           type: integer
@@ -250,11 +246,15 @@ components:
           type: string
         hairColor:
           type: string
+        headShape:
+          type: string
         eyeStyle:
           type: string
         eyeColor:
           type: string
         eyeWidth:
+          type: number
+        eyeSpacing:
           type: number
         mouthStyle:
           type: string
@@ -274,6 +274,8 @@ components:
           type: array
           items:
             type: string
+        backgroundColor:
+          type: string
         voiceId:
           type: string
         partPositions:
@@ -281,7 +283,7 @@ components:
 
     AvatarInput:
       type: object
-      required: [skinTone, hairStyle, hairColor, eyeStyle, eyeColor, eyeWidth, mouthStyle, outfitStyle, outfitColor, accessoryColor, voiceId]
+      required: [skinTone, hairStyle, hairColor, headShape, eyeStyle, eyeColor, eyeWidth, eyeSpacing, mouthStyle, outfitStyle, outfitColor, accessoryColor, backgroundColor, voiceId]
       properties:
         skinTone:
           type: string
@@ -289,11 +291,15 @@ components:
           type: string
         hairColor:
           type: string
+        headShape:
+          type: string
         eyeStyle:
           type: string
         eyeColor:
           type: string
         eyeWidth:
+          type: number
+        eyeSpacing:
           type: number
         mouthStyle:
           type: string
@@ -313,6 +319,8 @@ components:
           type: array
           items:
             type: string
+        backgroundColor:
+          type: string
         voiceId:
           type: string
         partPositions:
@@ -401,13 +409,10 @@ components:
       properties:
         name:
           type: string
-          minLength: 1
         size:
           type: integer
-          minimum: 1
         contentType:
           type: string
-          minLength: 1
 
     UploadUrlResponse:
       type: object
@@ -417,8 +422,6 @@ components:
           type: string
         objectPath:
           type: string
-        metadata:
-          $ref: "#/components/schemas/UploadUrlRequest"
 
     SuccessResponse:
       type: object

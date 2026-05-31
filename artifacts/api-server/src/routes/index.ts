@@ -8,6 +8,7 @@ import partsRouter from "./parts";
 import storageRouter from "./storage";
 import voicesRouter from "./voices";
 import cosmeticsRouter from "./cosmetics";
+import presetsRouter from "./presets";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(partsRouter);
 router.use(storageRouter);
 router.use(voicesRouter);
 router.use(cosmeticsRouter);
+router.use(presetsRouter);
 
 export default router;

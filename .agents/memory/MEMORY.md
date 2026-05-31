@@ -2,3 +2,7 @@
 - [Admin password setup](admin-password.md) — ADMIN_PASSWORD set as shared env var (not secret) via setEnvVars; default `avatarstudio`; admin page at `/admin`
 - [Chat SSE architecture](chat-sse.md) — tmi.js connection pool per channel; SSE at `/api/chat/stream?channel=USERNAME`; overlay URL `/overlay?channel=USERNAME`
 - [AvatarPreview exports](avatar-preview.md) — exports both named `{ AvatarPreview }` and default; container div controls size, not the component
+- [Color storage convention](color-storage.md) — skin/hair stored as hex since this session; resolveColorHex() in constants.ts converts old ID values on load.
+- [Eye controls](eye-controls.md) — eyeWidth = individual eye SIZE scale; eyeSpacing = distance between eyes multiplier; both live as extra sliders inside the eyes PositionControl.
+- [Layer order system](layer-order.md) — layerOrder includes ALL parts: backhair/outfit/head/fronthair/eyes/mouth/acc_0…acc_N. Synced in Studio useEffect on accessoriesKey change.
+- [Presets route](presets-route.md) — /api/presets not in OpenAPI spec; Studio uses raw fetch. Max 5 per user enforced server-side.

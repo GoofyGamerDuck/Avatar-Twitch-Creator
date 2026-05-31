@@ -149,7 +149,7 @@ export default function Overlay() {
                 accessory={current.avatar.accessory}
                 accessoryColor={current.avatar.accessoryColor}
                 customPartImages={customPartImages}
-                size="sm"
+
               />
             ) : current.profileImageUrl ? (
               <img src={current.profileImageUrl} alt={current.displayName}

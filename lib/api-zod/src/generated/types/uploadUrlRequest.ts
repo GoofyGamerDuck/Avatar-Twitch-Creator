@@ -7,10 +7,7 @@
  */
 
 export interface UploadUrlRequest {
-  /** @minLength 1 */
   name: string;
-  /** @minimum 1 */
   size: number;
-  /** @minLength 1 */
   contentType: string;
 }

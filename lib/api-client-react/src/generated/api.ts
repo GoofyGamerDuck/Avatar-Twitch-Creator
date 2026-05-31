@@ -674,7 +674,7 @@ export const requestUploadUrl = async (uploadUrlRequest: UploadUrlRequest, optio
 
 
 
-export const getRequestUploadUrlMutationOptions = <TError = ErrorType<ErrorResponse>,
+export const getRequestUploadUrlMutationOptions = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext> => {
 
@@ -703,12 +703,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RequestUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestUploadUrl>>>
     export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>
-    export type RequestUploadUrlMutationError = ErrorType<ErrorResponse>
+    export type RequestUploadUrlMutationError = ErrorType<unknown>
 
     /**
  * @summary Request a presigned URL for file upload
  */
-export const useRequestUploadUrl = <TError = ErrorType<ErrorResponse>,
+export const useRequestUploadUrl = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof requestUploadUrl>>,
