@@ -234,7 +234,7 @@ components:
 
     AvatarSettings:
       type: object
-      required: [id, userId, skinTone, hairStyle, hairColor, headShape, eyeStyle, eyeColor, eyeWidth, eyeSpacing, mouthStyle, outfitStyle, outfitColor, accessoryColor, backgroundColor, voiceId]
+      required: [id, userId, skinTone, hairStyle, hairColor, headShape, eyeStyle, eyeColor, eyeWidth, eyeSpacing, mouthStyle, mouthColor, outfitStyle, outfitColor, accessoryColor, backgroundColor, voiceId]
       properties:
         id:
           type: integer
@@ -257,6 +257,8 @@ components:
         eyeSpacing:
           type: number
         mouthStyle:
+          type: string
+        mouthColor:
           type: string
         outfitStyle:
           type: string
@@ -283,7 +285,7 @@ components:
 
     AvatarInput:
       type: object
-      required: [skinTone, hairStyle, hairColor, headShape, eyeStyle, eyeColor, eyeWidth, eyeSpacing, mouthStyle, outfitStyle, outfitColor, accessoryColor, backgroundColor, voiceId]
+      required: [skinTone, hairStyle, hairColor, headShape, eyeStyle, eyeColor, eyeWidth, eyeSpacing, mouthStyle, mouthColor, outfitStyle, outfitColor, accessoryColor, backgroundColor, voiceId]
       properties:
         skinTone:
           type: string
@@ -302,6 +304,8 @@ components:
         eyeSpacing:
           type: number
         mouthStyle:
+          type: string
+        mouthColor:
           type: string
         outfitStyle:
           type: string
@@ -386,6 +390,10 @@ components:
         rate:
           type: number
         browserVoiceName:
+          type: ["string", "null"]
+        modelPath:
+          type: ["string", "null"]
+        modelConfigPath:
           type: ["string", "null"]
         isActive:
           type: boolean

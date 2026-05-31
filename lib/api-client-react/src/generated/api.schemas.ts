@@ -50,6 +50,7 @@ export interface AvatarSettings {
   eyeWidth: number;
   eyeSpacing: number;
   mouthStyle: string;
+  mouthColor: string;
   outfitStyle: string;
   outfitColor: string;
   /** @nullable */
@@ -72,6 +73,7 @@ export interface AvatarInput {
   eyeWidth: number;
   eyeSpacing: number;
   mouthStyle: string;
+  mouthColor: string;
   outfitStyle: string;
   outfitColor: string;
   /** @nullable */
@@ -116,6 +118,10 @@ export interface Voice {
   rate: number;
   /** @nullable */
   browserVoiceName?: string | null;
+  /** @nullable */
+  modelPath?: string | null;
+  /** @nullable */
+  modelConfigPath?: string | null;
   isActive?: boolean;
   isBuiltIn?: boolean;
   sortOrder?: number;

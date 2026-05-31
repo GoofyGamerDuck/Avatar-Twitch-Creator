@@ -20,6 +20,7 @@ export interface AvatarSettings {
   eyeWidth: number;
   eyeSpacing: number;
   mouthStyle: string;
+  mouthColor: string;
   outfitStyle: string;
   outfitColor: string;
   /** @nullable */

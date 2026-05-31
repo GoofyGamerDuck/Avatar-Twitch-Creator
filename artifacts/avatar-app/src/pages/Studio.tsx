@@ -13,16 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Play, Square, SlidersHorizontal, ChevronUp, ChevronDown, Plus, X, ArrowUp, ArrowDown, BookmarkPlus, Bookmark, Trash2 } from "lucide-react";
+import { Play, Square, SlidersHorizontal, ChevronUp, ChevronDown, Plus, X, GripVertical, ArrowUp, ArrowDown, BookmarkPlus, Bookmark, Trash2, RotateCcw } from "lucide-react";
 import { HEAD_SHAPES, LAYER_LABELS, BASE_LAYERS, resolveColorHex } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
 interface DbPart { id: number; category: string; name: string; label: string; imageUrl: string; isActive: boolean; isBuiltIn: boolean; allowColorOverride: boolean; sortOrder: number; }
 interface VoiceConfig { id: number; name: string; description: string; pitch: number; rate: number; browserVoiceName?: string | null; }
 interface SavedPreset { id: number; name: string; data: Record<string, unknown>; createdAt: string; }
 
-// ── Native colour input ───────────────────────────────────────────────────────
+// ── Native colour picker ──────────────────────────────────────────────────────
 function ColorInput({ label, value, onChange, className = "" }: {
   label?: string; value: string; onChange: (v: string) => void; className?: string;
 }) {
@@ -42,7 +41,7 @@ function ColorInput({ label, value, onChange, className = "" }: {
   );
 }
 
-// ── Position, Scale, and optional extra sliders ───────────────────────────────
+// ── Part position + scale control ─────────────────────────────────────────────
 interface ExtraSlider { key: string; label: string; value: number; min: number; max: number; step: number; format?: (v: number) => string; onChange: (v: number) => void; }
 
 function PositionControl({ partKey, positions, onChange, extra = [] }: {
@@ -53,7 +52,7 @@ function PositionControl({ partKey, positions, onChange, extra = [] }: {
   const [open, setOpen] = useState(false);
   const p = positions[partKey] ?? { x: 0, y: 0, scale: 1 };
   const scale = p.scale ?? 1;
-  const isSet = p.x !== 0 || p.y !== 0 || scale !== 1 || extra.some(s => s.value !== 1 && s.value !== 0);
+  const isSet = p.x !== 0 || p.y !== 0 || scale !== 1 || extra.some(s => s.value !== 1.0);
   function set(patch: Partial<{ x: number; y: number; scale: number }>) {
     onChange(partKey, { x: p.x, y: p.y, scale, ...patch });
   }
@@ -92,7 +91,7 @@ function PositionControl({ partKey, positions, onChange, extra = [] }: {
           {isSet && (
             <button type="button" className="text-xs text-destructive hover:underline mt-0.5"
               onClick={() => { set({ x: 0, y: 0, scale: 1 }); extra.forEach(s => s.onChange(1.0)); }}>
-              Reset all
+              Reset
             </button>
           )}
         </div>
@@ -101,7 +100,48 @@ function PositionControl({ partKey, positions, onChange, extra = [] }: {
   );
 }
 
-// ── Accessories multi-select ──────────────────────────────────────────────────
+// ── Per-accessory position/scale ──────────────────────────────────────────────
+function AccPositionControl({ value, onChange }: {
+  value: { x: number; y: number; scale: number } | undefined;
+  onChange: (v: { x: number; y: number; scale: number }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const v = value ?? { x: 0, y: 0, scale: 1 };
+  const isSet = v.x !== 0 || v.y !== 0 || v.scale !== 1;
+  function set(patch: Partial<typeof v>) { onChange({ ...v, ...patch }); }
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${isSet ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}`}>
+        <SlidersHorizontal className="h-3 w-3" />
+        <span>Pos & Scale</span>
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="mt-1 p-2.5 bg-muted/60 rounded-lg space-y-1.5 border border-border/40">
+          {[
+            { label: 'X', min: -90, max: 90, step: 1, value: v.x, onCh: (x: number) => set({ x }) },
+            { label: 'Y', min: -90, max: 90, step: 1, value: v.y, onCh: (y: number) => set({ y }) },
+            { label: 'S', min: 0.1, max: 3.0, step: 0.05, value: v.scale, onCh: (scale: number) => set({ scale }) },
+          ].map(s => (
+            <div key={s.label} className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-5">{s.label}</span>
+              <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
+                onChange={e => s.onCh(Number(e.target.value))} className="flex-1 h-1.5 accent-primary" />
+              <span className="text-xs tabular-nums w-10 text-right text-muted-foreground">
+                {s.label === 'S' ? `${s.value.toFixed(2)}×` : (s.value > 0 ? `+${s.value.toFixed(0)}` : s.value.toFixed(0))}
+              </span>
+            </div>
+          ))}
+          {isSet && <button type="button" className="text-xs text-destructive hover:underline"
+            onClick={() => onChange({ x: 0, y: 0, scale: 1 })}>Reset</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Accessories editor (per-accessory colour + offset) ────────────────────────
 function AccessoriesEditor({ accessories, allParts, onChange }: {
   accessories: AccessoryItem[]; allParts: DbPart[]; onChange: (acc: AccessoryItem[]) => void;
 }) {
@@ -112,11 +152,14 @@ function AccessoriesEditor({ accessories, allParts, onChange }: {
   const available = accParts.filter(p => !selectedNames.has(p.name));
   function add(part: DbPart) {
     if (accessories.length >= MAX) return;
-    onChange([...accessories, { name: part.name, color: '#3b82f6' }]);
+    onChange([...accessories, { name: part.name, color: '#3b82f6', position: { x: 0, y: 0, scale: 1 } }]);
     setAddOpen(false);
   }
   function remove(i: number) { onChange(accessories.filter((_, idx) => idx !== i)); }
   function setColor(i: number, color: string) { onChange(accessories.map((a, idx) => idx === i ? { ...a, color } : a)); }
+  function setPosition(i: number, pos: { x: number; y: number; scale: number }) {
+    onChange(accessories.map((a, idx) => idx === i ? { ...a, position: pos } : a));
+  }
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -142,24 +185,25 @@ function AccessoriesEditor({ accessories, allParts, onChange }: {
         )}
       </div>
       {accessories.length === 0 && <p className="text-sm text-muted-foreground italic">No accessories. Click Add to choose one.</p>}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {accessories.map((acc, idx) => {
           const part = allParts.find(p => p.name === acc.name);
           const canColor = part?.allowColorOverride !== false && acc.name !== 'crown';
           return (
-            <div key={`${acc.name}-${idx}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40 border border-border/50">
-              <span className="flex-1 text-sm font-medium capitalize">
-                {part?.label ?? acc.name}
-                {part && !part.isBuiltIn && <span className="ml-1 text-xs text-purple-500">✦</span>}
-              </span>
+            <div key={`${acc.name}-${idx}`} className="p-3 rounded-lg bg-muted/40 border border-border/50 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="flex-1 text-sm font-semibold capitalize">
+                  {part?.label ?? acc.name}
+                  {part && !part.isBuiltIn && <span className="ml-1 text-xs text-purple-500">✦</span>}
+                </span>
+                <button onClick={() => remove(idx)} className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
               {canColor && (
-                <div className="w-32">
-                  <ColorInput value={acc.color} onChange={c => setColor(idx, c)} />
-                </div>
+                <ColorInput value={acc.color} onChange={c => setColor(idx, c)} />
               )}
-              <button onClick={() => remove(idx)} className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors">
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <AccPositionControl value={acc.position} onChange={pos => setPosition(idx, pos)} />
             </div>
           );
         })}
@@ -168,10 +212,13 @@ function AccessoriesEditor({ accessories, allParts, onChange }: {
   );
 }
 
-// ── Full layer order editor ───────────────────────────────────────────────────
+// ── Layer order editor with drag handles ──────────────────────────────────────
 function LayerOrderEditor({ layerOrder, accessories, onChange }: {
   layerOrder: string[]; accessories: AccessoryItem[]; onChange: (order: string[]) => void;
 }) {
+  const [dragSrc, setDragSrc] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+
   const accKeys = accessories.map((_, i) => `acc_${i}`);
   const ALL = [...BASE_LAYERS, ...accKeys];
   const resolved = (() => {
@@ -179,7 +226,6 @@ function LayerOrderEditor({ layerOrder, accessories, onChange }: {
     const missing = ALL.filter(k => !ordered.includes(k));
     return [...ordered, ...missing];
   })();
-  // Display is reversed (front at top)
   const display = [...resolved].reverse();
 
   function getLabel(key: string): string {
@@ -192,13 +238,23 @@ function LayerOrderEditor({ layerOrder, accessories, onChange }: {
     return key;
   }
 
-  function move(displayIdx: number, dir: -1 | 1) {
-    // dir=-1 means move UP in display = move toward front = higher resolve index
+  function moveArrow(displayIdx: number, dir: -1 | 1) {
     const resolvedIdx = resolved.length - 1 - displayIdx;
     const targetIdx = resolvedIdx + (-dir);
     if (targetIdx < 0 || targetIdx >= resolved.length) return;
     const next = [...resolved];
     [next[resolvedIdx], next[targetIdx]] = [next[targetIdx], next[resolvedIdx]];
+    onChange(next);
+  }
+
+  function moveFromTo(srcDisplay: number, dstDisplay: number) {
+    if (srcDisplay === dstDisplay) return;
+    const n = resolved.length;
+    const srcResolved = n - 1 - srcDisplay;
+    const dstResolved = n - 1 - dstDisplay;
+    const next = [...resolved];
+    const [item] = next.splice(srcResolved, 1);
+    next.splice(dstResolved, 0, item);
     onChange(next);
   }
 
@@ -209,21 +265,30 @@ function LayerOrderEditor({ layerOrder, accessories, onChange }: {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-base">Layer Order</h3>
-          <p className="text-xs text-muted-foreground">Top of list = renders in front. Bottom = behind everything.</p>
+          <p className="text-xs text-muted-foreground">Top = front. Drag ⠿ or use arrows to reorder.</p>
         </div>
         {!isDefault && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onChange([])}>Reset</Button>}
       </div>
       <div className="space-y-1.5">
         {display.map((key, displayIdx) => (
-          <div key={key} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-sm">
+          <div key={key}
+            draggable
+            onDragStart={() => setDragSrc(displayIdx)}
+            onDragOver={e => { e.preventDefault(); setDragOver(displayIdx); }}
+            onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
+            onDrop={() => { if (dragSrc !== null) moveFromTo(dragSrc, displayIdx); setDragSrc(null); setDragOver(null); }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm select-none transition-colors
+              ${dragSrc === displayIdx ? 'opacity-40' : ''}
+              ${dragOver === displayIdx && dragSrc !== displayIdx ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
+            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab flex-shrink-0" />
             <span className="flex-1 font-medium">{getLabel(key)}</span>
-            <span className="text-xs text-muted-foreground opacity-60 w-12 text-right">
-              {displayIdx === 0 ? '▲ front' : displayIdx === display.length - 1 ? '▼ behind' : ''}
+            <span className="text-xs text-muted-foreground opacity-50 w-14 text-right">
+              {displayIdx === 0 ? 'front' : displayIdx === display.length - 1 ? 'behind' : ''}
             </span>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(displayIdx, -1)} disabled={displayIdx === 0}>
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveArrow(displayIdx, -1)} disabled={displayIdx === 0}>
               <ArrowUp className="h-3 w-3" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(displayIdx, 1)} disabled={displayIdx === display.length - 1}>
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveArrow(displayIdx, 1)} disabled={displayIdx === display.length - 1}>
               <ArrowDown className="h-3 w-3" />
             </Button>
           </div>
@@ -290,7 +355,8 @@ function PresetsPanel({ currentSettings, currentAccessories, currentPositions, c
         <div className="mt-3 space-y-3">
           {presets.length < MAX && (
             <div className="flex gap-2">
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Preset name…" className="h-8 text-sm flex-1" onKeyDown={e => e.key === 'Enter' && savePreset()} />
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Preset name…" className="h-8 text-sm flex-1"
+                onKeyDown={e => e.key === 'Enter' && savePreset()} />
               <Button size="sm" variant="outline" className="h-8 px-2 gap-1" onClick={savePreset} disabled={!newName.trim() || saving}>
                 <BookmarkPlus className="h-3.5 w-3.5" />
               </Button>
@@ -307,22 +373,14 @@ function PresetsPanel({ currentSettings, currentAccessories, currentPositions, c
                 <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30">
                   <div className="w-11 h-11 flex-shrink-0">
                     <AvatarPreview
-                      skinTone={String(ps.skinTone ?? '#D6A371')}
-                      hairStyle={String(ps.hairStyle ?? 'short')}
-                      hairColor={String(ps.hairColor ?? '#4A2F1D')}
-                      headShape={String(ps.headShape ?? 'circle')}
-                      eyeStyle={String(ps.eyeStyle ?? 'default')}
-                      eyeColor={String(ps.eyeColor ?? '#1e1b4b')}
-                      eyeWidth={Number(ps.eyeWidth ?? 1)}
-                      eyeSpacing={Number(ps.eyeSpacing ?? 1)}
-                      mouthStyle={String(ps.mouthStyle ?? 'smile')}
-                      outfitStyle={String(ps.outfitStyle ?? 'casual')}
-                      outfitColor={String(ps.outfitColor ?? '#2563eb')}
-                      accessories={pa}
-                      backgroundColor={String(ps.backgroundColor ?? '#1e1b4b')}
-                      partPositions={pp}
-                      layerOrder={pl}
-                    />
+                      skinTone={String(ps.skinTone ?? '#D6A371')} hairStyle={String(ps.hairStyle ?? 'short')}
+                      hairColor={String(ps.hairColor ?? '#4A2F1D')} headShape={String(ps.headShape ?? 'circle')}
+                      eyeStyle={String(ps.eyeStyle ?? 'default')} eyeColor={String(ps.eyeColor ?? '#1e1b4b')}
+                      eyeWidth={Number(ps.eyeWidth ?? 1)} eyeSpacing={Number(ps.eyeSpacing ?? 1)}
+                      mouthStyle={String(ps.mouthStyle ?? 'smile')} mouthColor={String(ps.mouthColor ?? '#2d1a0e')}
+                      outfitStyle={String(ps.outfitStyle ?? 'casual')} outfitColor={String(ps.outfitColor ?? '#2563eb')}
+                      accessories={pa} backgroundColor={String(ps.backgroundColor ?? '#1e1b4b')}
+                      partPositions={pp} layerOrder={pl} />
                   </div>
                   <span className="flex-1 text-sm font-medium truncate">{p.name}</span>
                   <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => onLoad(p.data)}>Load</Button>
@@ -339,9 +397,9 @@ function PresetsPanel({ currentSettings, currentAccessories, currentPositions, c
   );
 }
 
-// ── Part selector row ─────────────────────────────────────────────────────────
-function PartRow({ label, stateKey, partKey, opts, value, onValueChange, positions, onPositionChange, extra = [] }: {
-  label: string; stateKey: string; partKey: keyof PartPositionsMap;
+// ── Part row (style selector + position control) ───────────────────────────────
+function PartRow({ label, partKey, opts, value, onValueChange, positions, onPositionChange, extra = [] }: {
+  label: string; partKey: keyof PartPositionsMap;
   opts: { value: string; label: string; isBuiltIn: boolean }[];
   value: string; onValueChange: (v: string) => void;
   positions: PartPositionsMap;
@@ -367,6 +425,20 @@ function PartRow({ label, stateKey, partKey, opts, value, onValueChange, positio
   );
 }
 
+// ── Default settings ──────────────────────────────────────────────────────────
+type Settings = {
+  skinTone: string; hairStyle: string; hairColor: string; headShape: string;
+  eyeStyle: string; eyeColor: string; eyeWidth: number; eyeSpacing: number;
+  mouthStyle: string; mouthColor: string; outfitStyle: string; outfitColor: string;
+  accessoryColor: string; backgroundColor: string; voiceId: string;
+};
+const DEFAULT_SETTINGS: Settings = {
+  skinTone: "#D6A371", hairStyle: "short", hairColor: "#4A2F1D", headShape: "circle",
+  eyeStyle: "default", eyeColor: "#1e1b4b", eyeWidth: 1.0, eyeSpacing: 1.0,
+  mouthStyle: "smile", mouthColor: "#2d1a0e", outfitStyle: "casual", outfitColor: "#2563eb",
+  accessoryColor: "#3b82f6", backgroundColor: "#1e1b4b", voiceId: "Alloy",
+};
+
 // ── Main Studio ───────────────────────────────────────────────────────────────
 export default function Studio() {
   const [, setLocation] = useLocation();
@@ -376,19 +448,7 @@ export default function Studio() {
   const saveAvatar = useSaveAvatar();
   const { toast } = useToast();
 
-  type Settings = {
-    skinTone: string; hairStyle: string; hairColor: string; headShape: string;
-    eyeStyle: string; eyeColor: string; eyeWidth: number; eyeSpacing: number;
-    mouthStyle: string; outfitStyle: string; outfitColor: string;
-    accessoryColor: string; backgroundColor: string; voiceId: string;
-  };
-
-  const [settings, setSettings] = useState<Settings>({
-    skinTone: "#D6A371", hairStyle: "short", hairColor: "#4A2F1D", headShape: "circle",
-    eyeStyle: "default", eyeColor: "#1e1b4b", eyeWidth: 1.0, eyeSpacing: 1.0,
-    mouthStyle: "smile", outfitStyle: "casual", outfitColor: "#2563eb",
-    accessoryColor: "#3b82f6", backgroundColor: "#1e1b4b", voiceId: "Alloy",
-  });
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [accessories, setAccessories] = useState<AccessoryItem[]>([]);
   const [partPositions, setPartPositions] = useState<PartPositionsMap>({});
   const [layerOrder, setLayerOrder] = useState<string[]>([]);
@@ -402,36 +462,37 @@ export default function Studio() {
 
   useEffect(() => {
     if (!avatarData) return;
+    const ad = avatarData as unknown as Record<string, unknown>;
     setSettings({
-      skinTone:   resolveColorHex(avatarData.skinTone, 'skin'),
+      skinTone:   resolveColorHex(String(avatarData.skinTone), 'skin'),
       hairStyle:  avatarData.hairStyle,
-      hairColor:  resolveColorHex(avatarData.hairColor, 'hair'),
-      headShape:  avatarData.headShape ?? 'circle',
+      hairColor:  resolveColorHex(String(avatarData.hairColor), 'hair'),
+      headShape:  String(ad.headShape ?? 'circle'),
       eyeStyle:   avatarData.eyeStyle,
       eyeColor:   avatarData.eyeColor ?? "#1e1b4b",
       eyeWidth:   avatarData.eyeWidth ?? 1.0,
-      eyeSpacing: (avatarData as unknown as Record<string, unknown>).eyeSpacing as number ?? 1.0,
+      eyeSpacing: Number(ad.eyeSpacing ?? 1.0),
       mouthStyle: avatarData.mouthStyle,
+      mouthColor: String(ad.mouthColor ?? "#2d1a0e"),
       outfitStyle: avatarData.outfitStyle,
       outfitColor: avatarData.outfitColor ?? "#2563eb",
       accessoryColor: avatarData.accessoryColor ?? "#3b82f6",
-      backgroundColor: (avatarData as unknown as Record<string, unknown>).backgroundColor as string ?? "#1e1b4b",
+      backgroundColor: String(ad.backgroundColor ?? "#1e1b4b"),
       voiceId: avatarData.voiceId,
     });
     const loadedAcc = avatarData.accessories?.length
       ? avatarData.accessories as AccessoryItem[]
       : (avatarData.accessory && avatarData.accessory !== 'none'
-        ? [{ name: avatarData.accessory, color: avatarData.accessoryColor ?? '#3b82f6' }] : []);
+        ? [{ name: avatarData.accessory, color: avatarData.accessoryColor ?? '#3b82f6', position: { x: 0, y: 0, scale: 1 } }] : []);
     setAccessories(loadedAcc);
     setPartPositions((avatarData.partPositions as PartPositionsMap) ?? {});
     setLayerOrder((avatarData.layerOrder as string[]) ?? []);
   }, [avatarData]);
 
-  // Sync layer order when accessories change
   const accessoriesKey = accessories.map(a => a.name).join(',');
   useEffect(() => {
     setLayerOrder(prev => {
-      if (prev.length === 0) return []; // will be populated by avatarData load
+      if (prev.length === 0) return [];
       const withoutAcc = prev.filter(k => !k.startsWith('acc_'));
       const newAccKeys = accessories.map((_, i) => `acc_${i}`);
       return [...withoutAcc, ...newAccKeys];
@@ -457,6 +518,29 @@ export default function Studio() {
   const updatePos = useCallback((part: keyof PartPositionsMap, v: { x: number; y: number; scale: number }) =>
     setPartPositions(prev => ({ ...prev, [part]: v })), []);
 
+  // Drag-in-preview callback
+  const handleLayerDrag = useCallback((layerKey: string, x: number, y: number) => {
+    if (layerKey.startsWith('acc_')) {
+      const idx = parseInt(layerKey.slice(4), 10);
+      setAccessories(prev => prev.map((a, i) => i === idx
+        ? { ...a, position: { x, y, scale: a.position?.scale ?? 1 } } : a));
+    } else {
+      const partMap: Record<string, keyof PartPositionsMap> = {
+        backhair: 'hair', fronthair: 'hair', head: 'head', outfit: 'outfit', eyes: 'eyes', mouth: 'mouth',
+      };
+      const pk = partMap[layerKey];
+      if (pk) setPartPositions(prev => ({ ...prev, [pk]: { ...(prev[pk] ?? { x: 0, y: 0, scale: 1 }), x, y } }));
+    }
+  }, []);
+
+  function handleReset() {
+    if (!window.confirm("Reset avatar to defaults? Changes won't be saved until you click Save.")) return;
+    setSettings(DEFAULT_SETTINGS);
+    setAccessories([]);
+    setPartPositions({});
+    setLayerOrder([]);
+  }
+
   function loadPreset(data: Record<string, unknown>) {
     const ps = (data.settings ?? {}) as Partial<Settings>;
     setSettings(s => ({ ...s, ...ps }));
@@ -473,13 +557,7 @@ export default function Studio() {
         (cleanPos as Record<string, typeof v>)[k] = v;
     }
     saveAvatar.mutate({
-      data: {
-        ...settings,
-        accessories,
-        accessory: accessories[0]?.name ?? null,
-        layerOrder,
-        partPositions: cleanPos,
-      },
+      data: { ...settings, accessories, accessory: accessories[0]?.name ?? null, layerOrder, partPositions: cleanPos },
     }, {
       onSuccess: () => toast({ title: "Avatar saved!" }),
       onError: () => toast({ title: "Save failed", variant: "destructive" }),
@@ -505,7 +583,6 @@ export default function Studio() {
   const customPartImages: Record<string, string> = {};
   allParts.forEach(p => { if (p.imageUrl) customPartImages[p.name] = p.imageUrl; });
   const parts = (cat: string) => allParts.filter(p => p.category === cat).map(p => ({ value: p.name, label: p.label, isBuiltIn: p.isBuiltIn }));
-
   const voices = (voicesData?.voices ?? []) as VoiceConfig[];
 
   const eyeExtras: ExtraSlider[] = [
@@ -523,9 +600,24 @@ export default function Studio() {
         {/* ── Preview sidebar ────────────────────────────── */}
         <div className="w-full md:w-[360px] flex-shrink-0">
           <div className="bg-card border border-border rounded-3xl p-5 shadow-xl sticky top-24 space-y-4">
-            <h2 className="text-xl font-bold font-mono text-center">Live Preview</h2>
-            <AvatarPreview {...settings} accessories={accessories}
-              customPartImages={customPartImages} partPositions={partPositions} layerOrder={layerOrder} />
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold font-mono">Live Preview</h2>
+              <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive" onClick={handleReset}>
+                <RotateCcw className="h-3 w-3" /> Reset
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground text-center opacity-60">
+              Drag parts directly on the preview to reposition
+            </div>
+            <AvatarPreview
+              {...settings}
+              accessories={accessories}
+              customPartImages={customPartImages}
+              partPositions={partPositions}
+              layerOrder={layerOrder}
+              editable
+              onLayerDrag={handleLayerDrag}
+            />
             <div className="flex gap-3">
               <Button onClick={handleSave} className="flex-1" disabled={saveAvatar.isPending}>
                 {saveAvatar.isPending ? "Saving…" : "Save Avatar"}
@@ -545,7 +637,7 @@ export default function Studio() {
           </div>
         </div>
 
-        {/* ── Controls area ─────────────────────────────── */}
+        {/* ── Controls ──────────────────────────────────── */}
         <div className="flex-1 bg-card border border-border rounded-3xl overflow-hidden shadow-xl flex flex-col">
           <div className="p-5 border-b border-border bg-muted/30">
             <h1 className="text-2xl font-bold font-mono">Customization Studio</h1>
@@ -559,9 +651,7 @@ export default function Studio() {
                 <TabsTrigger value="voice">Voice</TabsTrigger>
               </TabsList>
 
-              {/* ── Appearance ──────────────────────────────── */}
               <TabsContent value="appearance" className="space-y-7">
-
                 {/* Head & Skin */}
                 <section className="space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Head & Skin</h3>
@@ -583,7 +673,7 @@ export default function Studio() {
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Hair</h3>
                   <ColorInput label="Hair Colour" value={settings.hairColor} onChange={v => update('hairColor', v)} />
                   {!partsLoading && (
-                    <PartRow label="Hair Style" stateKey="hairStyle" partKey="hair" opts={parts("hair_style")}
+                    <PartRow label="Hair Style" partKey="hair" opts={parts("hair_style")}
                       value={settings.hairStyle} onValueChange={v => update('hairStyle', v)}
                       positions={partPositions} onPositionChange={updatePos} />
                   )}
@@ -594,7 +684,7 @@ export default function Studio() {
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Eyes</h3>
                   <ColorInput label="Eye Colour" value={settings.eyeColor} onChange={v => update('eyeColor', v)} />
                   {!partsLoading && (
-                    <PartRow label="Eye Style" stateKey="eyeStyle" partKey="eyes" opts={parts("eye_style")}
+                    <PartRow label="Eye Style" partKey="eyes" opts={parts("eye_style")}
                       value={settings.eyeStyle} onValueChange={v => update('eyeStyle', v)}
                       positions={partPositions} onPositionChange={updatePos}
                       extra={eyeExtras} />
@@ -604,8 +694,9 @@ export default function Studio() {
                 {/* Mouth */}
                 <section className="space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Mouth</h3>
+                  <ColorInput label="Mouth Colour" value={settings.mouthColor} onChange={v => update('mouthColor', v)} />
                   {!partsLoading && (
-                    <PartRow label="Mouth Style" stateKey="mouthStyle" partKey="mouth" opts={parts("mouth_style")}
+                    <PartRow label="Mouth Style" partKey="mouth" opts={parts("mouth_style")}
                       value={settings.mouthStyle} onValueChange={v => update('mouthStyle', v)}
                       positions={partPositions} onPositionChange={updatePos} />
                   )}
@@ -616,7 +707,7 @@ export default function Studio() {
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Outfit</h3>
                   <ColorInput label="Outfit Colour" value={settings.outfitColor} onChange={v => update('outfitColor', v)} />
                   {!partsLoading && (
-                    <PartRow label="Outfit Style" stateKey="outfitStyle" partKey="outfit" opts={parts("outfit_style")}
+                    <PartRow label="Outfit Style" partKey="outfit" opts={parts("outfit_style")}
                       value={settings.outfitStyle} onValueChange={v => update('outfitStyle', v)}
                       positions={partPositions} onPositionChange={updatePos} />
                   )}
@@ -626,12 +717,6 @@ export default function Studio() {
                 <section className="space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Accessories</h3>
                   <AccessoriesEditor accessories={accessories} allParts={allParts} onChange={setAccessories} />
-                  {accessories.length > 0 && (
-                    <div className="pl-2 border-l-2 border-primary/20 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Group offset & scale</Label>
-                      <PositionControl partKey="accessory" positions={partPositions} onChange={updatePos} />
-                    </div>
-                  )}
                 </section>
 
                 {/* Background */}
@@ -641,12 +726,10 @@ export default function Studio() {
                 </section>
               </TabsContent>
 
-              {/* ── Layers ──────────────────────────────────── */}
               <TabsContent value="layers" className="pt-2">
                 <LayerOrderEditor layerOrder={layerOrder} accessories={accessories} onChange={setLayerOrder} />
               </TabsContent>
 
-              {/* ── Voice ───────────────────────────────────── */}
               <TabsContent value="voice" className="space-y-8 pt-4">
                 <div className="space-y-4 max-w-md">
                   <Label className="text-lg font-semibold">TTS Voice</Label>

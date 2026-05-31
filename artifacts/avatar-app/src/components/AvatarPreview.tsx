@@ -3,7 +3,8 @@ import { SKIN_TONES, HAIR_COLORS } from '../lib/constants';
 
 export interface PartPosition { x: number; y: number; scale?: number; }
 export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory' | 'head', PartPosition>>;
-export interface AccessoryItem { name: string; color: string; }
+export interface AccessoryItemPosition { x: number; y: number; scale: number; }
+export interface AccessoryItem { name: string; color: string; position?: AccessoryItemPosition; }
 
 interface AvatarPreviewProps {
   skinTone: string;
@@ -12,9 +13,10 @@ interface AvatarPreviewProps {
   headShape?: string;
   eyeStyle: string;
   eyeColor?: string;
-  eyeWidth?: number;    // eye size scale (individual eye)
-  eyeSpacing?: number;  // distance between eyes multiplier
+  eyeWidth?: number;
+  eyeSpacing?: number;
   mouthStyle: string;
+  mouthColor?: string;
   outfitStyle: string;
   outfitColor?: string;
   accessory?: string | null;
@@ -24,10 +26,12 @@ interface AvatarPreviewProps {
   customPartImages?: Record<string, string>;
   partPositions?: PartPositionsMap | null;
   layerOrder?: string[];
+  // Editable drag mode
+  editable?: boolean;
+  onLayerDrag?: (layerKey: string, x: number, y: number) => void;
   className?: string;
 }
 
-// Resolve old ID-based colors to hex for backward compat
 function resolveHex(value: string, map: { id: string; hex: string }[]): string {
   if (!value) return map[0].hex;
   if (value.startsWith('#')) return value;
@@ -52,7 +56,15 @@ function partTransform(pos: PartPosition | undefined, cx: number, cy: number): s
   return `translate(${dx} ${dy}) translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`;
 }
 
-// Returns the SVG shape for a given head shape
+function accTransform(p: AccessoryItemPosition | undefined): string | undefined {
+  if (!p) return undefined;
+  const { x, y, scale: s = 1 } = p;
+  if (x === 0 && y === 0 && s === 1) return undefined;
+  const cx = PART_CENTERS.accessory.cx, cy = PART_CENTERS.accessory.cy;
+  if (s === 1) return `translate(${x} ${y})`;
+  return `translate(${x} ${y}) translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`;
+}
+
 function headShapeEl(shape: string, fill: string): React.ReactNode {
   switch (shape) {
     case 'oval':           return <ellipse cx="100" cy="90" rx="38" ry="50" fill={fill} />;
@@ -134,18 +146,28 @@ function SingleAccessory({ name, color, customUrl }: { name: string; color: stri
   return null;
 }
 
+// Part key → PartPositionsMap key
+const PART_KEY_MAP: Record<string, keyof PartPositionsMap> = {
+  backhair: 'hair', fronthair: 'hair', head: 'head',
+  outfit: 'outfit', eyes: 'eyes', mouth: 'mouth',
+};
+
 const AvatarPreview: React.FC<AvatarPreviewProps> = ({
   skinTone, hairStyle, hairColor, headShape = 'circle',
   eyeStyle, eyeColor = "#1e1b4b", eyeWidth = 1.0, eyeSpacing = 1.0,
-  mouthStyle, outfitStyle, outfitColor = "#2563eb",
+  mouthStyle, mouthColor = "#2d1a0e",
+  outfitStyle, outfitColor = "#2563eb",
   accessory, accessoryColor = "#3b82f6",
   accessories = [], backgroundColor = "#1e1b4b",
   customPartImages = {}, partPositions, layerOrder = [],
+  editable = false, onLayerDrag,
   className = "",
 }) => {
   const uidRef = useRef(`av${Math.random().toString(36).slice(2, 7)}`);
   const uid = uidRef.current;
   const clipId = `hc-${uid}`;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragRef = useRef<{ part: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
   const skinHex = resolveHex(skinTone, SKIN_TONES);
   const hairHex = resolveHex(hairColor, HAIR_COLORS);
@@ -155,7 +177,6 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     ? accessories
     : (accessory && accessory !== 'none' ? [{ name: accessory, color: accessoryColor }] : []);
 
-  // Build full ordered layer list
   const accKeys = resolvedAcc.map((_, i) => `acc_${i}`);
   const ALL_KEYS = ['backhair', 'outfit', 'head', 'fronthair', 'eyes', 'mouth', ...accKeys];
   const resolvedOrder = (() => {
@@ -166,13 +187,52 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     return [...ordered, ...missing];
   })();
 
+  // ── Drag helpers ────────────────────────────────────────────────────────────
+  function toSvgCoords(clientX: number, clientY: number) {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const rect = svgRef.current.getBoundingClientRect();
+    return { x: ((clientX - rect.left) / rect.width) * 200, y: ((clientY - rect.top) / rect.height) * 200 };
+  }
+
+  function onLayerMouseDown(e: React.MouseEvent, part: string) {
+    if (!editable || !onLayerDrag) return;
+    e.preventDefault(); e.stopPropagation();
+    const { x, y } = toSvgCoords(e.clientX, e.clientY);
+    let origX = 0, origY = 0;
+    if (part.startsWith('acc_')) {
+      const idx = parseInt(part.slice(4), 10);
+      origX = resolvedAcc[idx]?.position?.x ?? 0;
+      origY = resolvedAcc[idx]?.position?.y ?? 0;
+    } else {
+      const pk = PART_KEY_MAP[part];
+      if (pk) { origX = pos[pk]?.x ?? 0; origY = pos[pk]?.y ?? 0; }
+    }
+    dragRef.current = { part, startX: x, startY: y, origX, origY };
+  }
+
+  function onSvgMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (!dragRef.current || !onLayerDrag) return;
+    const { x, y } = toSvgCoords(e.clientX, e.clientY);
+    const { part, startX, startY, origX, origY } = dragRef.current;
+    const newX = Math.max(-90, Math.min(90, origX + (x - startX)));
+    const newY = Math.max(-90, Math.min(90, origY + (y - startY)));
+    onLayerDrag(part, newX, newY);
+  }
+
+  function onSvgEnd() { dragRef.current = null; }
+
+  function layerProps(key: string) {
+    if (!editable) return {};
+    return { onMouseDown: (e: React.MouseEvent) => onLayerMouseDown(e, key), style: { cursor: 'grab' } };
+  }
+
   // ── Layer renderers ─────────────────────────────────────────────────────────
   function renderBackHair(): React.ReactNode {
     if (hairStyle === 'none') return null;
     if (!['long', 'wavy', 'ponytail'].includes(hairStyle)) return null;
     const tr = partTransform(pos.hair, PART_CENTERS.hair.cx, PART_CENTERS.hair.cy);
     return (
-      <g key="backhair" fill={hairHex} transform={tr}>
+      <g fill={hairHex} transform={tr}>
         {hairStyle === 'long' && (
           <><path d="M 57 88 Q 50 115 48 158 Q 62 150 68 128 L 70 88" />
             <path d="M 143 88 Q 150 115 152 158 Q 138 150 132 128 L 130 88" /></>
@@ -193,10 +253,9 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     const tr = partTransform(pos.outfit, PART_CENTERS.outfit.cx, PART_CENTERS.outfit.cy);
     const url = customPartImages[outfitStyle];
     return (
-      <g key="outfit" transform={tr}>
+      <g transform={tr}>
         {url ? (
-          <image href={url} x="35" y="125" width="130" height="75"
-            preserveAspectRatio="xMidYMid meet" clipPath={`url(#bc-${uid})`} />
+          <image href={url} x="35" y="125" width="130" height="75" preserveAspectRatio="xMidYMid meet" clipPath={`url(#bc-${uid})`} />
         ) : (
           <g fill={outfitColor}>
             {outfitStyle === 'hoodie' && (
@@ -212,10 +271,7 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
               <><path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" />
                 <path d="M 97 136 L 93 155 L 100 168 L 107 155 L 103 136" fill="white" opacity="0.4" /></>
             )}
-            {outfitStyle === 'shirt' && (
-              <path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" />
-            )}
-            {!['hoodie','dress','sporty','formal','shirt','none'].includes(outfitStyle) && (
+            {!['hoodie','dress','sporty','formal','none'].includes(outfitStyle) && (
               <path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" />
             )}
           </g>
@@ -226,7 +282,7 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
 
   function renderHead(): React.ReactNode {
     const tr = partTransform(pos.head, PART_CENTERS.head.cx, PART_CENTERS.head.cy);
-    return <g key="head" transform={tr}>{headShapeEl(headShape, skinHex)}</g>;
+    return <g transform={tr}>{headShapeEl(headShape, skinHex)}</g>;
   }
 
   function renderFrontHair(): React.ReactNode {
@@ -234,10 +290,9 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     const tr = partTransform(pos.hair, PART_CENTERS.hair.cx, PART_CENTERS.hair.cy);
     const url = customPartImages[hairStyle];
     return (
-      <g key="fronthair" transform={tr}>
+      <g transform={tr}>
         {url ? (
-          <image href={url} x="48" y="38" width="104" height="70"
-            preserveAspectRatio="xMidYMid meet" clipPath={`url(#${clipId})`} />
+          <image href={url} x="48" y="38" width="104" height="70" preserveAspectRatio="xMidYMid meet" clipPath={`url(#${clipId})`} />
         ) : (
           <g fill={hairHex}>
             {['short','long','wavy'].includes(hairStyle) && (
@@ -275,7 +330,7 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     const tr = partTransform(pos.eyes, PART_CENTERS.eyes.cx, PART_CENTERS.eyes.cy);
     const url = customPartImages[eyeStyle];
     return (
-      <g key="eyes" transform={tr}>
+      <g transform={tr}>
         {url ? (
           <image href={url} x="70" y="76" width="60" height="22" preserveAspectRatio="xMidYMid meet" />
         ) : (
@@ -296,9 +351,9 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
     if (mouthStyle === 'none') return null;
     const tr = partTransform(pos.mouth, PART_CENTERS.mouth.cx, PART_CENTERS.mouth.cy);
     const url = customPartImages[mouthStyle];
-    const stroke = "#2d1a0e";
+    const stroke = mouthColor;
     return (
-      <g key="mouth" transform={tr}>
+      <g transform={tr}>
         {url ? (
           <image href={url} x="82" y="104" width="36" height="20" preserveAspectRatio="xMidYMid meet" />
         ) : (
@@ -306,7 +361,7 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
             {mouthStyle === 'smile'      && <path d="M 88 110 Q 100 122 112 110" />}
             {mouthStyle === 'neutral'    && <line x1="88" y1="112" x2="112" y2="112" />}
             {mouthStyle === 'smirk'      && <path d="M 88 113 Q 98 108 112 110" />}
-            {mouthStyle === 'open'       && <ellipse cx="100" cy="113" rx="9" ry="6" fill="#cc5c5c" stroke={stroke} strokeWidth="1.5" />}
+            {mouthStyle === 'open'       && <ellipse cx="100" cy="113" rx="9" ry="6" fill={mouthColor} fillOpacity="0.6" stroke={stroke} strokeWidth="1.5" />}
             {mouthStyle === 'wide-smile' && <path d="M 84 109 Q 100 126 116 109" />}
             {!['smile','neutral','smirk','open','wide-smile','none'].includes(mouthStyle) && <path d="M 88 110 Q 100 122 112 110" />}
           </g>
@@ -316,9 +371,9 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
   }
 
   function renderAccessory(acc: AccessoryItem, idx: number): React.ReactNode {
-    const tr = partTransform(pos.accessory, PART_CENTERS.accessory.cx, PART_CENTERS.accessory.cy);
+    const tr = accTransform(acc.position);
     return (
-      <g key={`acc_${idx}`} transform={tr}>
+      <g transform={tr}>
         <SingleAccessory name={acc.name} color={acc.color} customUrl={customPartImages[acc.name]} />
       </g>
     );
@@ -345,13 +400,21 @@ const AvatarPreview: React.FC<AvatarPreviewProps> = ({
   return (
     <div className={`relative w-full h-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center border border-border shadow-inner ${className}`}
       style={{ backgroundColor }}>
-      <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md">
+      {editable && (
+        <div className="absolute top-2 left-2 z-10 text-xs bg-black/50 text-white px-2 py-0.5 rounded-full pointer-events-none">
+          drag to move
+        </div>
+      )}
+      <svg ref={svgRef} viewBox="0 0 200 200" className="w-full h-full drop-shadow-md select-none"
+        onMouseMove={onSvgMouseMove} onMouseUp={onSvgEnd} onMouseLeave={onSvgEnd}>
         <defs>
           <clipPath id={clipId}>{headClipEl(headShape)}</clipPath>
           <clipPath id={`bc-${uid}`}><rect x="35" y="122" width="130" height="78" /></clipPath>
         </defs>
         {resolvedOrder.map(key => (
-          <React.Fragment key={key}>{renderLayer(key)}</React.Fragment>
+          <g key={key} {...layerProps(key)}>
+            {renderLayer(key)}
+          </g>
         ))}
       </svg>
     </div>

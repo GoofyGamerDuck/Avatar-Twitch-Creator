@@ -5,7 +5,8 @@ import { usersTable } from "./users";
 
 export interface PartPosition { x: number; y: number; scale?: number; }
 export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory' | 'head', PartPosition>>;
-export interface AccessoryItem { name: string; color: string; }
+export interface AccessoryItemPosition { x: number; y: number; scale: number; }
+export interface AccessoryItem { name: string; color: string; position?: AccessoryItemPosition; }
 
 export const avatarSettingsTable = pgTable("avatar_settings", {
   id: serial("id").primaryKey(),
@@ -16,9 +17,10 @@ export const avatarSettingsTable = pgTable("avatar_settings", {
   headShape: text("head_shape").notNull().default("circle"),
   eyeStyle: text("eye_style").notNull().default("default"),
   eyeColor: text("eye_color").notNull().default("#1e1b4b"),
-  eyeWidth: doublePrecision("eye_width").notNull().default(1.0),     // eye size (individual eye scale)
-  eyeSpacing: doublePrecision("eye_spacing").notNull().default(1.0), // distance between eyes
+  eyeWidth: doublePrecision("eye_width").notNull().default(1.0),
+  eyeSpacing: doublePrecision("eye_spacing").notNull().default(1.0),
   mouthStyle: text("mouth_style").notNull().default("smile"),
+  mouthColor: text("mouth_color").notNull().default("#2d1a0e"),
   outfitStyle: text("outfit_style").notNull().default("casual"),
   outfitColor: text("outfit_color").notNull().default("#2563eb"),
   accessory: text("accessory"),

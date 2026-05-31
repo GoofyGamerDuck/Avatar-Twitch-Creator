@@ -14,6 +14,10 @@ export interface Voice {
   rate: number;
   /** @nullable */
   browserVoiceName?: string | null;
+  /** @nullable */
+  modelPath?: string | null;
+  /** @nullable */
+  modelConfigPath?: string | null;
   isActive?: boolean;
   isBuiltIn?: boolean;
   sortOrder?: number;
