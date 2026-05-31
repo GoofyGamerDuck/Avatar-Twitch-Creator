@@ -15,10 +15,21 @@ export interface ChatMessage {
     skinTone: string;
     hairStyle: string;
     hairColor: string;
+    headShape: string;
     eyeStyle: string;
+    eyeColor: string;
+    eyeWidth: number;
+    eyeSpacing: number;
     mouthStyle: string;
+    mouthColor: string;
     outfitStyle: string;
+    outfitColor: string;
     accessory: string | null;
+    accessoryColor: string;
+    accessories: { name: string; color: string; position?: { x: number; y: number; scale: number } }[];
+    layerOrder: string[];
+    backgroundColor: string;
+    partPositions: Record<string, { x: number; y: number; scale?: number }>;
     voiceId: string;
   } | null;
   profileImageUrl: string | null;
@@ -67,10 +78,21 @@ async function subscribeToChannel(
               skinTone: avatarData.skinTone,
               hairStyle: avatarData.hairStyle,
               hairColor: avatarData.hairColor,
+              headShape: avatarData.headShape,
               eyeStyle: avatarData.eyeStyle,
+              eyeColor: avatarData.eyeColor,
+              eyeWidth: avatarData.eyeWidth,
+              eyeSpacing: avatarData.eyeSpacing,
               mouthStyle: avatarData.mouthStyle,
+              mouthColor: avatarData.mouthColor,
               outfitStyle: avatarData.outfitStyle,
-              accessory: avatarData.accessory,
+              outfitColor: avatarData.outfitColor,
+              accessory: avatarData.accessory ?? null,
+              accessoryColor: avatarData.accessoryColor,
+              accessories: (avatarData.accessories ?? []) as { name: string; color: string; position?: { x: number; y: number; scale: number } }[],
+              layerOrder: (avatarData.layerOrder ?? []) as string[],
+              backgroundColor: avatarData.backgroundColor,
+              partPositions: (avatarData.partPositions ?? {}) as Record<string, { x: number; y: number; scale?: number }>,
               voiceId: avatarData.voiceId,
             };
           }

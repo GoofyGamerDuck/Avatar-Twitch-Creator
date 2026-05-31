@@ -5,13 +5,21 @@ interface AvatarData {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape: string;
   eyeStyle: string;
-  eyeColor?: string;
+  eyeColor: string;
+  eyeWidth: number;
+  eyeSpacing: number;
   mouthStyle: string;
+  mouthColor: string;
   outfitStyle: string;
-  outfitColor?: string;
+  outfitColor: string;
   accessory: string | null;
-  accessoryColor?: string;
+  accessoryColor: string;
+  accessories: { name: string; color: string; position?: { x: number; y: number; scale: number } }[];
+  layerOrder: string[];
+  backgroundColor: string;
+  partPositions: Record<string, { x: number; y: number; scale?: number }>;
   voiceId: string;
 }
 
@@ -156,15 +164,22 @@ export default function Overlay() {
                 skinTone={current.avatar.skinTone}
                 hairStyle={current.avatar.hairStyle}
                 hairColor={current.avatar.hairColor}
+                headShape={current.avatar.headShape}
                 eyeStyle={current.avatar.eyeStyle}
                 eyeColor={current.avatar.eyeColor}
+                eyeWidth={current.avatar.eyeWidth}
+                eyeSpacing={current.avatar.eyeSpacing}
                 mouthStyle={current.avatar.mouthStyle}
+                mouthColor={current.avatar.mouthColor}
                 outfitStyle={current.avatar.outfitStyle}
                 outfitColor={current.avatar.outfitColor}
                 accessory={current.avatar.accessory}
                 accessoryColor={current.avatar.accessoryColor}
+                accessories={current.avatar.accessories}
+                layerOrder={current.avatar.layerOrder}
+                backgroundColor={current.avatar.backgroundColor}
+                partPositions={current.avatar.partPositions}
                 customPartImages={customPartImages}
-
               />
             ) : current.profileImageUrl ? (
               <img src={current.profileImageUrl} alt={current.displayName}
