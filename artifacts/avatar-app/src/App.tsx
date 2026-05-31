@@ -6,6 +6,9 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Studio from "@/pages/Studio";
 import Profile from "@/pages/Profile";
+import Admin from "@/pages/Admin";
+import Chat from "@/pages/Chat";
+import Overlay from "@/pages/Overlay";
 
 const queryClient = new QueryClient();
 
@@ -15,6 +18,9 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/studio" component={Studio} />
       <Route path="/profile" component={Profile} />
+      <Route path="/admin" component={Admin} />
+      <Route path="/chat" component={Chat} />
+      <Route path="/overlay" component={Overlay} />
       <Route component={NotFound} />
     </Switch>
   );

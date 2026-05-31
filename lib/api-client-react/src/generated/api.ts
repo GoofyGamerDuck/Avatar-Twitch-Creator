@@ -24,8 +24,11 @@ import type {
   AvatarSettings,
   ErrorResponse,
   HealthStatus,
+  PartsListResponse,
   PublicAvatarResponse,
   SuccessResponse,
+  UploadUrlRequest,
+  UploadUrlResponse,
   User
 } from './api.schemas';
 
@@ -422,7 +425,7 @@ export const getGetUserAvatarUrl = (username: string,) => {
 }
 
 /**
- * @summary Get avatar and voice settings for a Twitch username (public API for TTS system)
+ * @summary Get avatar and voice settings for a Twitch username
  */
 export const getUserAvatar = async (username: string, options?: RequestInit): Promise<PublicAvatarResponse> => {
 
@@ -469,7 +472,7 @@ export type GetUserAvatarQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get avatar and voice settings for a Twitch username (public API for TTS system)
+ * @summary Get avatar and voice settings for a Twitch username
  */
 
 export function useGetUserAvatar<TData = Awaited<ReturnType<typeof getUserAvatar>>, TError = ErrorType<ErrorResponse>>(
@@ -489,4 +492,152 @@ export function useGetUserAvatar<TData = Awaited<ReturnType<typeof getUserAvatar
 
 
 
+
+export const getGetAvatarPartsUrl = () => {
+
+
+
+
+  return `/api/parts`
+}
+
+/**
+ * @summary List all active custom avatar parts
+ */
+export const getAvatarParts = async ( options?: RequestInit): Promise<PartsListResponse> => {
+
+  return customFetch<PartsListResponse>(getGetAvatarPartsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAvatarPartsQueryKey = () => {
+    return [
+    `/api/parts`
+    ] as const;
+    }
+
+
+export const getGetAvatarPartsQueryOptions = <TData = Awaited<ReturnType<typeof getAvatarParts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvatarParts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAvatarPartsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAvatarParts>>> = ({ signal }) => getAvatarParts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAvatarParts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAvatarPartsQueryResult = NonNullable<Awaited<ReturnType<typeof getAvatarParts>>>
+export type GetAvatarPartsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all active custom avatar parts
+ */
+
+export function useGetAvatarParts<TData = Awaited<ReturnType<typeof getAvatarParts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvatarParts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAvatarPartsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRequestUploadUrlUrl = () => {
+
+
+
+
+  return `/api/storage/uploads/request-url`
+}
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const requestUploadUrl = async (uploadUrlRequest: UploadUrlRequest, options?: RequestInit): Promise<UploadUrlResponse> => {
+
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      uploadUrlRequest,)
+  }
+);}
+
+
+
+
+export const getRequestUploadUrlMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext> => {
+
+const mutationKey = ['requestUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestUploadUrl>>, {data: BodyType<UploadUrlRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestUploadUrl>>>
+    export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>
+    export type RequestUploadUrlMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestUploadUrl>>,
+        TError,
+        {data: BodyType<UploadUrlRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestUploadUrlMutationOptions(options));
+    }
 

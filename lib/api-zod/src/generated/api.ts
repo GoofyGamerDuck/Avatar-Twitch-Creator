@@ -82,7 +82,7 @@ export const SaveAvatarResponse = zod.object({
 
 
 /**
- * @summary Get avatar and voice settings for a Twitch username (public API for TTS system)
+ * @summary Get avatar and voice settings for a Twitch username
  */
 export const GetUserAvatarParams = zod.object({
   "username": zod.coerce.string()
@@ -104,6 +104,52 @@ export const GetUserAvatarResponse = zod.object({
   "accessory": zod.string().nullable(),
   "voiceId": zod.string()
 })
+})
+
+
+/**
+ * @summary List all active custom avatar parts
+ */
+export const GetAvatarPartsResponse = zod.object({
+  "parts": zod.array(zod.object({
+  "id": zod.number(),
+  "category": zod.string(),
+  "name": zod.string(),
+  "label": zod.string(),
+  "imageUrl": zod.string(),
+  "isActive": zod.boolean().optional(),
+  "sortOrder": zod.number()
+}))
+})
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+
+
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+})
+
+
+
+
+
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string(),
+  "metadata": zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+}).optional()
 })
 
 

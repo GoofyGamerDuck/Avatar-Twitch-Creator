@@ -34,6 +34,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link href="/studio" className={`transition-colors hover:text-primary ${location === '/studio' ? 'text-primary' : 'text-muted-foreground'}`}>
                     Studio
                   </Link>
+                  <Link href="/chat" className={`transition-colors hover:text-primary ${location === '/chat' ? 'text-primary' : 'text-muted-foreground'}`}>
+                    Chat
+                  </Link>
                   <Link href="/profile" className={`transition-colors hover:text-primary ${location === '/profile' ? 'text-primary' : 'text-muted-foreground'}`}>
                     Profile
                   </Link>

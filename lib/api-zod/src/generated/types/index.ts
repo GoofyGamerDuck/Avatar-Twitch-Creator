@@ -7,9 +7,13 @@
  */
 
 export * from './avatarInput';
+export * from './avatarPart';
 export * from './avatarSettings';
 export * from './errorResponse';
 export * from './healthStatus';
+export * from './partsListResponse';
 export * from './publicAvatarResponse';
 export * from './successResponse';
+export * from './uploadUrlRequest';
+export * from './uploadUrlResponse';
 export * from './user';

@@ -52,6 +52,35 @@ export interface PublicAvatarResponse {
   avatar: AvatarSettings;
 }
 
+export interface AvatarPart {
+  id: number;
+  category: string;
+  name: string;
+  label: string;
+  imageUrl: string;
+  isActive?: boolean;
+  sortOrder: number;
+}
+
+export interface PartsListResponse {
+  parts: AvatarPart[];
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
 export interface SuccessResponse {
   success: boolean;
 }

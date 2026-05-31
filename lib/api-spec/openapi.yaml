@@ -16,6 +16,10 @@ tags:
     description: Avatar management
   - name: users
     description: Public user data
+  - name: parts
+    description: Avatar parts (custom uploaded assets)
+  - name: storage
+    description: Object storage upload and serving
 paths:
   /healthz:
     get:
@@ -108,7 +112,7 @@ paths:
     get:
       operationId: getUserAvatar
       tags: [users]
-      summary: Get avatar and voice settings for a Twitch username (public API for TTS system)
+      summary: Get avatar and voice settings for a Twitch username
       parameters:
         - name: username
           in: path
@@ -124,6 +128,44 @@ paths:
                 $ref: "#/components/schemas/PublicAvatarResponse"
         "404":
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /parts:
+    get:
+      operationId: getAvatarParts
+      tags: [parts]
+      summary: List all active custom avatar parts
+      responses:
+        "200":
+          description: Active avatar parts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartsListResponse"
+
+  /storage/uploads/request-url:
+    post:
+      tags: [storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Invalid fields
           content:
             application/json:
               schema:
@@ -211,6 +253,59 @@ components:
           type: ["string", "null"]
         avatar:
           $ref: "#/components/schemas/AvatarSettings"
+
+    AvatarPart:
+      type: object
+      required: [id, category, name, label, imageUrl, sortOrder]
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+        name:
+          type: string
+        label:
+          type: string
+        imageUrl:
+          type: string
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    PartsListResponse:
+      type: object
+      required: [parts]
+      properties:
+        parts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvatarPart"
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
 
     SuccessResponse:
       type: object

@@ -1,0 +1,4 @@
+- [Object storage URL pattern](obj-storage-urls.md) — objectPath from presigned URL is `/objects/uuid`; serve at `/api/storage/objects/uuid` (strip `/objects/` prefix)
+- [Admin password setup](admin-password.md) — ADMIN_PASSWORD set as shared env var (not secret) via setEnvVars; default `avatarstudio`; admin page at `/admin`
+- [Chat SSE architecture](chat-sse.md) — tmi.js connection pool per channel; SSE at `/api/chat/stream?channel=USERNAME`; overlay URL `/overlay?channel=USERNAME`
+- [AvatarPreview exports](avatar-preview.md) — exports both named `{ AvatarPreview }` and default; container div controls size, not the component
