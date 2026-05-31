@@ -9,6 +9,7 @@ import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import Chat from "@/pages/Chat";
 import Overlay from "@/pages/Overlay";
+import Cosmetics from "@/pages/Cosmetics";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/chat" component={Chat} />
       <Route path="/overlay" component={Overlay} />
+      <Route path="/cosmetics" component={Cosmetics} />
       <Route component={NotFound} />
     </Switch>
   );

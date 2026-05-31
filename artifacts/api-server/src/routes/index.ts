@@ -7,6 +7,7 @@ import chatRouter from "./chat";
 import partsRouter from "./parts";
 import storageRouter from "./storage";
 import voicesRouter from "./voices";
+import cosmeticsRouter from "./cosmetics";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(chatRouter);
 router.use(partsRouter);
 router.use(storageRouter);
 router.use(voicesRouter);
+router.use(cosmeticsRouter);
 
 export default router;

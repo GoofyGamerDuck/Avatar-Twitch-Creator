@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PartPosition {
-  x: number;
-  y: number;
-  scale?: number;
+export interface AccessoryItem {
+  name: string;
+  color: string;
 }

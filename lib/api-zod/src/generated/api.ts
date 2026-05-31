@@ -47,32 +47,43 @@ export const GetMyAvatarResponse = zod.object({
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
+  "eyeWidth": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
   "accessory": zod.string().nullish(),
   "accessoryColor": zod.string(),
+  "accessories": zod.array(zod.object({
+  "name": zod.string(),
+  "color": zod.string()
+})).optional(),
+  "layerOrder": zod.array(zod.string()).optional(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "eyes": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "mouth": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "outfit": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional()
 }).optional()
 })
@@ -87,32 +98,43 @@ export const SaveAvatarBody = zod.object({
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
+  "eyeWidth": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
   "accessory": zod.string().nullish(),
   "accessoryColor": zod.string(),
+  "accessories": zod.array(zod.object({
+  "name": zod.string(),
+  "color": zod.string()
+})).optional(),
+  "layerOrder": zod.array(zod.string()).optional(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "eyes": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "mouth": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "outfit": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional()
 }).optional()
 })
@@ -125,32 +147,43 @@ export const SaveAvatarResponse = zod.object({
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
+  "eyeWidth": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
   "accessory": zod.string().nullish(),
   "accessoryColor": zod.string(),
+  "accessories": zod.array(zod.object({
+  "name": zod.string(),
+  "color": zod.string()
+})).optional(),
+  "layerOrder": zod.array(zod.string()).optional(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "eyes": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "mouth": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "outfit": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional()
 }).optional()
 })
@@ -175,32 +208,43 @@ export const GetUserAvatarResponse = zod.object({
   "hairColor": zod.string(),
   "eyeStyle": zod.string(),
   "eyeColor": zod.string(),
+  "eyeWidth": zod.number(),
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "outfitColor": zod.string(),
   "accessory": zod.string().nullish(),
   "accessoryColor": zod.string(),
+  "accessories": zod.array(zod.object({
+  "name": zod.string(),
+  "color": zod.string()
+})).optional(),
+  "layerOrder": zod.array(zod.string()).optional(),
   "voiceId": zod.string(),
   "partPositions": zod.object({
   "hair": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "eyes": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "mouth": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "outfit": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional(),
   "accessory": zod.object({
   "x": zod.number(),
-  "y": zod.number()
+  "y": zod.number(),
+  "scale": zod.number().optional()
 }).optional()
 }).optional()
 })

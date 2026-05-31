@@ -1,5 +1,5 @@
 import { Layout } from "@/components/Layout";
-import { AvatarPreview } from "@/components/AvatarPreview";
+import { AvatarPreview, type AccessoryItem } from "@/components/AvatarPreview";
 import { useGetMe, useGetMyAvatar, getGetMeQueryKey, getGetMyAvatarQueryKey } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -21,34 +21,32 @@ export default function Profile() {
   useEffect(() => { if (!userLoading && !user) setLocation("/"); }, [user, userLoading, setLocation]);
 
   useEffect(() => {
-    fetch("/api/parts")
-      .then(r => r.json())
+    fetch("/api/parts").then(r => r.json())
       .then((d: { parts: DbPart[] }) => {
         const map: Record<string, string> = {};
         d.parts?.forEach(p => { if (p.imageUrl) map[p.name] = p.imageUrl; });
         setCustomPartImages(map);
-      })
-      .catch(() => {});
+      }).catch(() => {});
   }, []);
 
-  if (userLoading || avatarLoading) return <Layout><div className="flex-1 flex items-center justify-center">Loading profile…</div></Layout>;
+  if (userLoading || avatarLoading) return <Layout><div className="flex-1 flex items-center justify-center">Loading…</div></Layout>;
   if (!user || !avatarSettings) return null;
 
   const publicApiUrl = `${window.location.origin}/api/users/${user.twitchUsername}/avatar`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(publicApiUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const resolvedAccessories: AccessoryItem[] =
+    avatarSettings.accessories?.length
+      ? avatarSettings.accessories as AccessoryItem[]
+      : (avatarSettings.accessory && avatarSettings.accessory !== 'none'
+        ? [{ name: avatarSettings.accessory, color: avatarSettings.accessoryColor ?? '#3b82f6' }]
+        : []);
 
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto p-4 py-12">
         <h1 className="text-3xl font-bold font-mono mb-8">Your Profile</h1>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-1 space-y-6">
+          <div className="md:col-span-1">
             <div className="bg-card border border-border rounded-3xl p-6 shadow-xl text-center">
               <div className="w-48 h-48 mx-auto mb-6">
                 <AvatarPreview
@@ -57,13 +55,16 @@ export default function Profile() {
                   hairColor={avatarSettings.hairColor}
                   eyeStyle={avatarSettings.eyeStyle}
                   eyeColor={avatarSettings.eyeColor ?? "#1e1b4b"}
+                  eyeWidth={avatarSettings.eyeWidth ?? 1.0}
                   mouthStyle={avatarSettings.mouthStyle}
                   outfitStyle={avatarSettings.outfitStyle}
                   outfitColor={avatarSettings.outfitColor ?? "#2563eb"}
                   accessory={avatarSettings.accessory ?? null}
                   accessoryColor={avatarSettings.accessoryColor ?? "#3b82f6"}
+                  accessories={resolvedAccessories}
                   customPartImages={customPartImages}
                   partPositions={avatarSettings.partPositions as PartPositionsMap}
+                  layerOrder={avatarSettings.layerOrder as string[]}
                 />
               </div>
               <h2 className="text-xl font-bold">{user.displayName}</h2>
@@ -78,13 +79,13 @@ export default function Profile() {
             <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
               <h3 className="text-xl font-semibold mb-4">Integration Details</h3>
               <p className="text-muted-foreground mb-6">
-                Share this API URL with your stream bot or custom overlays to pull your latest avatar configuration automatically.
+                Share this URL with your stream bot or overlays to pull your latest avatar config automatically.
               </p>
               <div className="space-y-2 mb-6">
                 <Label>Public API URL</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={publicApiUrl} className="font-mono text-xs bg-muted" />
-                  <Button variant="secondary" onClick={handleCopy}>
+                  <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(publicApiUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </Button>
                 </div>
@@ -97,7 +98,7 @@ export default function Profile() {
                 <div>
                   <h4 className="font-semibold text-primary mb-1">Developer Note</h4>
                   <p className="text-sm text-muted-foreground">
-                    The API returns a JSON object with all avatar attributes and the selected <code>voiceId</code> ("{avatarSettings.voiceId}"). No authentication required.
+                    Returns all avatar attributes including the <code>accessories</code> array and <code>voiceId</code> ("{avatarSettings.voiceId}"). No authentication required.
                   </p>
                 </div>
               </div>

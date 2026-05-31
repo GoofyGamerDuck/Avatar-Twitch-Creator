@@ -5,6 +5,7 @@
  * Twitch Avatar Studio API
  * OpenAPI spec version: 0.1.0
  */
+import type { AccessoryItem } from './accessoryItem';
 import type { PartPositions } from './partPositions';
 
 export interface AvatarSettings {
@@ -15,12 +16,15 @@ export interface AvatarSettings {
   hairColor: string;
   eyeStyle: string;
   eyeColor: string;
+  eyeWidth: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
   /** @nullable */
   accessory?: string | null;
   accessoryColor: string;
+  accessories?: AccessoryItem[];
+  layerOrder?: string[];
   voiceId: string;
   partPositions?: PartPositions;
 }

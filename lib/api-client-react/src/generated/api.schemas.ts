@@ -21,6 +21,7 @@ export interface User {
 export interface PartPosition {
   x: number;
   y: number;
+  scale?: number;
 }
 
 export interface PartPositions {
@@ -31,6 +32,11 @@ export interface PartPositions {
   accessory?: PartPosition;
 }
 
+export interface AccessoryItem {
+  name: string;
+  color: string;
+}
+
 export interface AvatarSettings {
   id: number;
   userId: number;
@@ -39,12 +45,15 @@ export interface AvatarSettings {
   hairColor: string;
   eyeStyle: string;
   eyeColor: string;
+  eyeWidth: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
   /** @nullable */
   accessory?: string | null;
   accessoryColor: string;
+  accessories?: AccessoryItem[];
+  layerOrder?: string[];
   voiceId: string;
   partPositions?: PartPositions;
 }
@@ -55,12 +64,15 @@ export interface AvatarInput {
   hairColor: string;
   eyeStyle: string;
   eyeColor: string;
+  eyeWidth: number;
   mouthStyle: string;
   outfitStyle: string;
   outfitColor: string;
   /** @nullable */
   accessory?: string | null;
   accessoryColor: string;
+  accessories?: AccessoryItem[];
+  layerOrder?: string[];
   voiceId: string;
   partPositions?: PartPositions;
 }

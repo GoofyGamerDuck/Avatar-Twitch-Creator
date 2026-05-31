@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accessoryItem';
 export * from './avatarInput';
 export * from './avatarPart';
 export * from './avatarSettings';
