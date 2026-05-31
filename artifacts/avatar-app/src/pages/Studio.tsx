@@ -18,7 +18,7 @@ import { HEAD_SHAPES, LAYER_LABELS, BASE_LAYERS, resolveColorHex } from "@/lib/c
 import { useToast } from "@/hooks/use-toast";
 
 interface DbPart { id: number; category: string; name: string; label: string; imageUrl: string; isActive: boolean; isBuiltIn: boolean; allowColorOverride: boolean; sortOrder: number; }
-interface VoiceConfig { id: number; name: string; description: string; pitch: number; rate: number; browserVoiceName?: string | null; }
+interface VoiceConfig { id: number; name: string; description: string; pitch: number; rate: number; browserVoiceName?: string | null; elevenLabsVoiceId?: string | null; }
 interface SavedPreset { id: number; name: string; data: Record<string, unknown>; createdAt: string; }
 
 // ── Native colour picker ──────────────────────────────────────────────────────
@@ -564,11 +564,32 @@ export default function Studio() {
     });
   }
 
+  const testAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  function stopTestAudio() {
+    if (testAudioRef.current) { testAudioRef.current.pause(); testAudioRef.current = null; }
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+  }
+
   function handleTestVoice() {
-    if (!window.speechSynthesis || !testText.trim()) return;
-    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
-    const voices = (voicesData?.voices ?? []) as VoiceConfig[];
-    const vc = voices.find(v => v.name.toLowerCase() === settings.voiceId.toLowerCase());
+    if (!testText.trim()) return;
+    if (isSpeaking) { stopTestAudio(); return; }
+    const voiceList = (voicesData?.voices ?? []) as VoiceConfig[];
+    const vc = voiceList.find(v => v.name.toLowerCase() === settings.voiceId.toLowerCase());
+
+    if (vc?.elevenLabsVoiceId) {
+      const url = `/api/tts/synthesize?voiceId=${encodeURIComponent(settings.voiceId)}&text=${encodeURIComponent(testText.trim())}`;
+      const audio = new Audio(url);
+      testAudioRef.current = audio;
+      setIsSpeaking(true);
+      audio.onended = () => { testAudioRef.current = null; setIsSpeaking(false); };
+      audio.onerror = () => { testAudioRef.current = null; setIsSpeaking(false); };
+      audio.play().catch(() => setIsSpeaking(false));
+      return;
+    }
+
+    if (!window.speechSynthesis) return;
     const utt = new SpeechSynthesisUtterance(testText.trim());
     utt.pitch = vc?.pitch ?? 1.0; utt.rate = vc?.rate ?? 1.0;
     if (vc?.browserVoiceName) {

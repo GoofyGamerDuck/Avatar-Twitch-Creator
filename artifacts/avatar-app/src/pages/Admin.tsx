@@ -187,10 +187,8 @@ function PartsPanel({ pw }: { pw: string }) {
               <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => toggleActive(p)}>
                 {p.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
-              {!p.isBuiltIn && (
-                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => deletePart(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-              )}
+              <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => deletePart(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
           </CardContent></Card>
         ))}
@@ -211,7 +209,7 @@ function VoicesPanel({ pw }: { pw: string }) {
   const modelRef = useRef<HTMLInputElement>(null);
   const configRef = useRef<HTMLInputElement>(null);
 
-  const emptyForm = { name: "", description: "", pitch: 1.0, rate: 1.0, browserVoiceName: "", modelPath: "", modelConfigPath: "" };
+  const emptyForm = { name: "", description: "", pitch: 1.0, rate: 1.0, browserVoiceName: "", elevenLabsVoiceId: "", modelPath: "", modelConfigPath: "" };
   const [form, setForm] = useState(emptyForm);
 
   // Load browser's detected voices
@@ -255,13 +253,15 @@ function VoicesPanel({ pw }: { pw: string }) {
   function startEdit(v: Voice) {
     setEditingId(v.id);
     setForm({ name: v.name, description: v.description, pitch: v.pitch, rate: v.rate,
-      browserVoiceName: v.browserVoiceName ?? "", modelPath: v.modelPath ?? "", modelConfigPath: v.modelConfigPath ?? "" });
+      browserVoiceName: v.browserVoiceName ?? "", elevenLabsVoiceId: (v as unknown as { elevenLabsVoiceId?: string }).elevenLabsVoiceId ?? "",
+      modelPath: v.modelPath ?? "", modelConfigPath: v.modelConfigPath ?? "" });
     setShowAdd(false);
   }
 
   async function handleSave() {
     const body = { name: form.name, description: form.description, pitch: form.pitch, rate: form.rate,
       browserVoiceName: form.browserVoiceName || null,
+      elevenLabsVoiceId: form.elevenLabsVoiceId || null,
       modelPath: form.modelPath || null, modelConfigPath: form.modelConfigPath || null };
     if (editingId) {
       await fetch(`/api/admin/voices/${editingId}`, { method: "PATCH", headers: { "Content-Type": "application/json", "x-admin-password": pw }, body: JSON.stringify(body) });
@@ -347,6 +347,23 @@ function VoicesPanel({ pw }: { pw: string }) {
           {browserVoices.length > 0
             ? `${browserVoices.length} system voices detected. To add custom voices, install them in your OS and restart the browser.`
             : "No system voices detected. Make sure your browser has TTS enabled."}
+        </p>
+      </div>
+
+      {/* ElevenLabs Voice ID */}
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-1.5">
+          🎙 ElevenLabs Voice ID
+          <span className="text-muted-foreground font-normal text-xs">(optional — overrides browser TTS)</span>
+        </Label>
+        <Input value={form.elevenLabsVoiceId} onChange={e => setForm(f => ({ ...f, elevenLabsVoiceId: e.target.value }))}
+          placeholder="e.g. 21m00Tcm4TlvDq8ikWAM" className="font-mono text-sm" />
+        <p className="text-xs text-muted-foreground">
+          Find voice IDs in the{" "}
+          <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noreferrer" className="underline text-primary">
+            ElevenLabs Voice Library
+          </a>
+          {" "}— click a voice → Share → copy the ID from the URL. When set, the server synthesizes audio directly via the ElevenLabs API.
         </p>
       </div>
 
@@ -443,8 +460,9 @@ function VoicesPanel({ pw }: { pw: string }) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{voice.name}</span>
                       {voice.isBuiltIn && <Badge variant="secondary" className="text-xs">Built-in</Badge>}
-                      {voice.modelPath && <Badge variant="outline" className="text-xs text-green-600 border-green-500/40">🎙 piper</Badge>}
-                      {!voice.isActive && <Badge variant="outline" className="text-xs text-muted-foreground">Hidden</Badge>}
+                      {(voice as unknown as { elevenLabsVoiceId?: string }).elevenLabsVoiceId && <Badge variant="outline" className="text-xs text-purple-600 border-purple-500/40">🎙 ElevenLabs</Badge>}
+                    {voice.modelPath && <Badge variant="outline" className="text-xs text-green-600 border-green-500/40">🎙 piper</Badge>}
+                    {!voice.isActive && <Badge variant="outline" className="text-xs text-muted-foreground">Hidden</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{voice.description}</p>
                     <div className="flex gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
@@ -457,7 +475,7 @@ function VoicesPanel({ pw }: { pw: string }) {
                     <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => previewVoice(voice)}>▶ Test</Button>
                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => startEdit(voice)}>✎</Button>
                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => toggleActive(voice)}>{voice.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</Button>
-                    {!voice.isBuiltIn && <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => deleteVoice(voice.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => deleteVoice(voice.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </CardContent></Card>

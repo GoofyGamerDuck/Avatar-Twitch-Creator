@@ -316,6 +316,7 @@ export const GetVoicesResponse = zod.object({
   "pitch": zod.number(),
   "rate": zod.number(),
   "browserVoiceName": zod.string().nullish(),
+  "elevenLabsVoiceId": zod.string().nullish(),
   "modelPath": zod.string().nullish(),
   "modelConfigPath": zod.string().nullish(),
   "isActive": zod.boolean().optional(),

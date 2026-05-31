@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db, avatarPartsTable, voicesTable, cosmeticRequestsTable, usersTable } from "@workspace/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";

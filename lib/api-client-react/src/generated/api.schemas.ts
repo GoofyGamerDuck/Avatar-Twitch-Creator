@@ -119,6 +119,8 @@ export interface Voice {
   /** @nullable */
   browserVoiceName?: string | null;
   /** @nullable */
+  elevenLabsVoiceId?: string | null;
+  /** @nullable */
   modelPath?: string | null;
   /** @nullable */
   modelConfigPath?: string | null;

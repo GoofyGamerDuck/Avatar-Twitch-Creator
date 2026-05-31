@@ -9,6 +9,7 @@ import storageRouter from "./storage";
 import voicesRouter from "./voices";
 import cosmeticsRouter from "./cosmetics";
 import presetsRouter from "./presets";
+import ttsRouter from "./tts";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(storageRouter);
 router.use(voicesRouter);
 router.use(cosmeticsRouter);
 router.use(presetsRouter);
+router.use(ttsRouter);
 
 export default router;

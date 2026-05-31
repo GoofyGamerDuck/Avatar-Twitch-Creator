@@ -26,7 +26,7 @@ interface ChatMessage {
 }
 
 interface DbPart { id: number; name: string; imageUrl: string; }
-interface VoiceConfig { name: string; pitch: number; rate: number; browserVoiceName?: string | null; }
+interface VoiceConfig { name: string; pitch: number; rate: number; browserVoiceName?: string | null; elevenLabsVoiceId?: string | null; }
 
 export default function Overlay() {
   const search = typeof window !== "undefined" ? window.location.search : "";
@@ -40,6 +40,7 @@ export default function Overlay() {
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
   const queueRef = useRef<ChatMessage[]>([]);
   const busyRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load parts and voices from API
   useEffect(() => {
@@ -72,9 +73,23 @@ export default function Overlay() {
   }, []);
 
   function speakMessage(text: string, voiceId: string) {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
     const vc = voiceMap[voiceId.toLowerCase()];
+
+    // Stop any existing audio
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    window.speechSynthesis?.cancel();
+
+    if (vc?.elevenLabsVoiceId) {
+      // Use server-side ElevenLabs TTS
+      const url = `/api/tts/synthesize?voiceId=${encodeURIComponent(voiceId)}&text=${encodeURIComponent(text)}`;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.play().catch(() => {});
+      return;
+    }
+
+    // Browser SpeechSynthesis fallback
+    if (!window.speechSynthesis) return;
     const utt = new SpeechSynthesisUtterance(text);
     utt.pitch = vc?.pitch ?? 1.0;
     utt.rate = vc?.rate ?? 1.0;
