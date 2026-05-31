@@ -7,6 +7,10 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Trust the Replit reverse proxy so req.ip, secure cookies, and
+// x-forwarded-* headers all resolve correctly.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
@@ -56,8 +60,10 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      // With trust proxy = 1, req.secure is true when the proxy is HTTPS.
+      // Use secure cookies whenever the connection is HTTPS.
+      secure: "auto",
+      sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     },
   }),

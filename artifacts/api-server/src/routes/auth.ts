@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, avatarSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -8,7 +8,22 @@ const router: IRouter = Router();
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID ?? "";
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET ?? "";
 
-function getRedirectUri(req: { headers: { host?: string } }): string {
+function getRedirectUri(req: Request): string {
+  // Use the real public host the browser is talking to.
+  // Replit's proxy forwards the original Host header, so req.headers.host
+  // is the public domain (e.g. xxx.replit.dev or xxx.replit.app).
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const publicHost = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : (forwardedHost ?? req.headers.host ?? "");
+
+  if (publicHost && publicHost !== "localhost" && !publicHost.startsWith("localhost:")) {
+    const fwdProto = req.headers["x-forwarded-proto"];
+    const proto = Array.isArray(fwdProto) ? fwdProto[0] : (fwdProto ?? "https");
+    return `${proto}://${publicHost}/api/auth/twitch/callback`;
+  }
+
+  // Fallback: env-var based (for local dev without a proxy)
   const domains = process.env.REPLIT_DOMAINS ?? "";
   const primaryDomain = domains.split(",")[0]?.trim();
   if (primaryDomain) {
@@ -18,9 +33,13 @@ function getRedirectUri(req: { headers: { host?: string } }): string {
   if (devDomain) {
     return `https://${devDomain}/api/auth/twitch/callback`;
   }
-  const host = req.headers.host ?? "localhost";
-  return `http://${host}/api/auth/twitch/callback`;
+  return `http://${publicHost || "localhost"}/api/auth/twitch/callback`;
 }
+
+// Informational endpoint — lets the frontend show the exact URL to register
+router.get("/auth/redirect-uri", (req, res): void => {
+  res.json({ redirectUri: getRedirectUri(req) });
+});
 
 router.get("/auth/twitch", (req, res): void => {
   if (!TWITCH_CLIENT_ID) {
@@ -28,6 +47,7 @@ router.get("/auth/twitch", (req, res): void => {
     return;
   }
   const redirectUri = getRedirectUri(req);
+  req.log.info({ redirectUri }, "Twitch OAuth redirect");
   const params = new URLSearchParams({
     client_id: TWITCH_CLIENT_ID,
     redirect_uri: redirectUri,
@@ -40,10 +60,15 @@ router.get("/auth/twitch", (req, res): void => {
 router.get("/auth/twitch/callback", async (req, res): Promise<void> => {
   const code = Array.isArray(req.query.code) ? req.query.code[0] : req.query.code;
   const error = Array.isArray(req.query.error) ? req.query.error[0] : req.query.error;
+  const errorDesc = Array.isArray(req.query.error_description)
+    ? req.query.error_description[0]
+    : req.query.error_description;
+
+  req.log.info({ code: !!code, error, errorDesc }, "Twitch callback received");
 
   if (error || !code || typeof code !== "string") {
-    req.log.warn({ error }, "Twitch OAuth error");
-    res.redirect("/?error=twitch_auth_failed");
+    req.log.warn({ error, errorDesc }, "Twitch OAuth error");
+    res.redirect(`/?error=${encodeURIComponent(String(error ?? "unknown"))}&desc=${encodeURIComponent(String(errorDesc ?? ""))}`);
     return;
   }
 
@@ -53,6 +78,7 @@ router.get("/auth/twitch/callback", async (req, res): Promise<void> => {
   }
 
   const redirectUri = getRedirectUri(req);
+  req.log.info({ redirectUri }, "Exchanging code for token");
 
   try {
     // Exchange code for access token
