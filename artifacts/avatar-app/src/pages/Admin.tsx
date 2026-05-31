@@ -25,7 +25,8 @@ interface AvatarPart {
 }
 interface Voice {
   id: number; name: string; description: string; pitch: number; rate: number;
-  browserVoiceName: string | null; modelPath: string | null; modelConfigPath: string | null;
+  browserVoiceName: string | null; elevenLabsVoiceId?: string | null;
+  modelPath: string | null; modelConfigPath: string | null;
   isActive: boolean; isBuiltIn: boolean; sortOrder: number;
 }
 interface CosmeticRequest {
@@ -283,7 +284,28 @@ function VoicesPanel({ pw }: { pw: string }) {
     await loadVoices();
   }
 
+  const adminAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  function stopAdminAudio() {
+    if (adminAudioRef.current) { adminAudioRef.current.pause(); adminAudioRef.current = null; }
+    window.speechSynthesis?.cancel();
+  }
+
+  function playServerTts(voiceName: string, text: string) {
+    stopAdminAudio();
+    const url = `/api/tts/synthesize?voiceId=${encodeURIComponent(voiceName)}&text=${encodeURIComponent(text)}`;
+    const audio = new Audio(url);
+    adminAudioRef.current = audio;
+    audio.onerror = () => { adminAudioRef.current = null; };
+    audio.onended = () => { adminAudioRef.current = null; };
+    audio.play().catch(() => {});
+  }
+
   function previewVoice(v: Voice) {
+    if (v.modelPath || v.elevenLabsVoiceId) {
+      playServerTts(v.name, `Hi, I'm ${v.name}. ${v.description}.`);
+      return;
+    }
     if (!window.speechSynthesis) return; window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(`Hi, I'm ${v.name}. ${v.description}.`);
     utt.pitch = v.pitch; utt.rate = v.rate;
@@ -292,8 +314,14 @@ function VoicesPanel({ pw }: { pw: string }) {
   }
 
   function previewCurrentForm() {
+    const text = `Hi, I'm ${form.name || "a test voice"}.`;
+    // Use server TTS if model or ElevenLabs ID is set and voice is already saved
+    if ((form.modelPath || form.elevenLabsVoiceId) && editingId) {
+      playServerTts(form.name, text);
+      return;
+    }
     if (!window.speechSynthesis) return; window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(`Hi, I'm ${form.name || "a test voice"}.`);
+    const utt = new SpeechSynthesisUtterance(text);
     utt.pitch = form.pitch; utt.rate = form.rate;
     if (form.browserVoiceName) {
       const bv = window.speechSynthesis.getVoices().find(vv => vv.name === form.browserVoiceName);
