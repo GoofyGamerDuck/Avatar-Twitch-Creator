@@ -14,10 +14,21 @@ interface AvatarData {
   skinTone: string;
   hairStyle: string;
   hairColor: string;
+  headShape: string;
   eyeStyle: string;
+  eyeColor: string;
+  eyeWidth: number;
+  eyeSpacing: number;
   mouthStyle: string;
+  mouthColor: string;
   outfitStyle: string;
+  outfitColor: string;
   accessory: string | null;
+  accessoryColor: string;
+  accessories: { name: string; color: string; position?: { x: number; y: number; scale: number } }[];
+  layerOrder: string[];
+  backgroundColor: string;
+  partPositions: Record<string, { x: number; y: number; scale?: number }>;
   voiceId: string;
 }
 
@@ -177,11 +188,21 @@ function MessageRow({ msg }: { msg: ChatMessage }) {
             skinTone={msg.avatar.skinTone}
             hairStyle={msg.avatar.hairStyle}
             hairColor={msg.avatar.hairColor}
+            headShape={msg.avatar.headShape}
             eyeStyle={msg.avatar.eyeStyle}
+            eyeColor={msg.avatar.eyeColor}
+            eyeWidth={msg.avatar.eyeWidth}
+            eyeSpacing={msg.avatar.eyeSpacing}
             mouthStyle={msg.avatar.mouthStyle}
+            mouthColor={msg.avatar.mouthColor}
             outfitStyle={msg.avatar.outfitStyle}
+            outfitColor={msg.avatar.outfitColor}
             accessory={msg.avatar.accessory}
-
+            accessoryColor={msg.avatar.accessoryColor}
+            accessories={msg.avatar.accessories}
+            layerOrder={msg.avatar.layerOrder}
+            backgroundColor={msg.avatar.backgroundColor}
+            partPositions={msg.avatar.partPositions}
           />
         ) : msg.profileImageUrl ? (
           <img
