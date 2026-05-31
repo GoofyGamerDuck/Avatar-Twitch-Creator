@@ -3,20 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Twitch Avatar Studio API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: avatar
+    description: Avatar management
+  - name: users
+    description: Public user data
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +29,199 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /avatar:
+    get:
+      operationId: getMyAvatar
+      tags: [avatar]
+      summary: Get authenticated user's avatar and voice settings
+      responses:
+        "200":
+          description: Avatar settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarSettings"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: saveAvatar
+      tags: [avatar]
+      summary: Save avatar and voice settings for the current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvatarInput"
+      responses:
+        "200":
+          description: Saved avatar settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarSettings"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{username}/avatar:
+    get:
+      operationId: getUserAvatar
+      tags: [users]
+      summary: Get avatar and voice settings for a Twitch username (public API for TTS system)
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Avatar settings for the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAvatarResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    User:
+      type: object
+      required: [id, twitchId, twitchUsername, displayName]
+      properties:
+        id:
+          type: integer
+        twitchId:
+          type: string
+        twitchUsername:
+          type: string
+        displayName:
+          type: string
+        profileImageUrl:
+          type: ["string", "null"]
+
+    AvatarSettings:
+      type: object
+      required: [id, userId, skinTone, hairStyle, hairColor, eyeStyle, mouthStyle, outfitStyle, accessory, voiceId]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        skinTone:
+          type: string
+        hairStyle:
+          type: string
+        hairColor:
+          type: string
+        eyeStyle:
+          type: string
+        mouthStyle:
+          type: string
+        outfitStyle:
+          type: string
+        accessory:
+          type: ["string", "null"]
+        voiceId:
+          type: string
+
+    AvatarInput:
+      type: object
+      required: [skinTone, hairStyle, hairColor, eyeStyle, mouthStyle, outfitStyle, voiceId]
+      properties:
+        skinTone:
+          type: string
+        hairStyle:
+          type: string
+        hairColor:
+          type: string
+        eyeStyle:
+          type: string
+        mouthStyle:
+          type: string
+        outfitStyle:
+          type: string
+        accessory:
+          type: ["string", "null"]
+        voiceId:
+          type: string
+
+    PublicAvatarResponse:
+      type: object
+      required: [twitchUsername, displayName, avatar]
+      properties:
+        twitchUsername:
+          type: string
+        displayName:
+          type: string
+        profileImageUrl:
+          type: ["string", "null"]
+        avatar:
+          $ref: "#/components/schemas/AvatarSettings"
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
