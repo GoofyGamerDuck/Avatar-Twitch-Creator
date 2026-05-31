@@ -54,7 +54,7 @@ router.patch("/admin/parts/:id", requireAdmin, async (req: Request, res: Respons
 
 router.delete("/admin/parts/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(String(req.params.id), 10);
-  await db.delete(avatarPartsTable).where(and(eq(avatarPartsTable.id, id), eq(avatarPartsTable.isBuiltIn, false)));
+  await db.delete(avatarPartsTable).where(eq(avatarPartsTable.id, id));
   res.json({ success: true });
 });
 
@@ -86,6 +86,9 @@ router.patch("/admin/voices/:id", requireAdmin, async (req: Request, res: Respon
   if (pitch !== undefined) updates.pitch = pitch;
   if (rate !== undefined) updates.rate = rate;
   if (browserVoiceName !== undefined) updates.browserVoiceName = browserVoiceName;
+  if (req.body.elevenLabsVoiceId !== undefined) updates.elevenLabsVoiceId = req.body.elevenLabsVoiceId;
+  if (req.body.modelPath !== undefined) updates.modelPath = req.body.modelPath;
+  if (req.body.modelConfigPath !== undefined) updates.modelConfigPath = req.body.modelConfigPath;
   if (isActive !== undefined) updates.isActive = isActive;
   if (sortOrder !== undefined) updates.sortOrder = sortOrder;
   const [voice] = await db.update(voicesTable).set(updates).where(eq(voicesTable.id, id)).returning();
@@ -95,7 +98,7 @@ router.patch("/admin/voices/:id", requireAdmin, async (req: Request, res: Respon
 
 router.delete("/admin/voices/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(String(req.params.id), 10);
-  await db.delete(voicesTable).where(and(eq(voicesTable.id, id), eq(voicesTable.isBuiltIn, false)));
+  await db.delete(voicesTable).where(eq(voicesTable.id, id));
   res.json({ success: true });
 });
 

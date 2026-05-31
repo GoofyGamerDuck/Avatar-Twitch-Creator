@@ -391,6 +391,8 @@ components:
           type: number
         browserVoiceName:
           type: ["string", "null"]
+        elevenLabsVoiceId:
+          type: ["string", "null"]
         modelPath:
           type: ["string", "null"]
         modelConfigPath:

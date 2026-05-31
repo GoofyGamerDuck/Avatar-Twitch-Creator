@@ -7,6 +7,7 @@ export const voicesTable = pgTable("voices", {
   pitch: doublePrecision("pitch").notNull().default(1.0),
   rate: doublePrecision("rate").notNull().default(1.0),
   browserVoiceName: text("browser_voice_name"),
+  elevenLabsVoiceId: text("eleven_labs_voice_id"),
   modelPath: text("model_path"),
   modelConfigPath: text("model_config_path"),
   isActive: boolean("is_active").notNull().default(true),
