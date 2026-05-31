@@ -58,7 +58,12 @@ export const GetMyAvatarResponse = zod.object({
   "accessoryColor": zod.string(),
   "accessories": zod.array(zod.object({
   "name": zod.string(),
-  "color": zod.string()
+  "color": zod.string(),
+  "position": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number()
+}).optional()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
   "backgroundColor": zod.string(),
@@ -118,7 +123,12 @@ export const SaveAvatarBody = zod.object({
   "accessoryColor": zod.string(),
   "accessories": zod.array(zod.object({
   "name": zod.string(),
-  "color": zod.string()
+  "color": zod.string(),
+  "position": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number()
+}).optional()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
   "backgroundColor": zod.string(),
@@ -176,7 +186,12 @@ export const SaveAvatarResponse = zod.object({
   "accessoryColor": zod.string(),
   "accessories": zod.array(zod.object({
   "name": zod.string(),
-  "color": zod.string()
+  "color": zod.string(),
+  "position": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number()
+}).optional()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
   "backgroundColor": zod.string(),
@@ -246,7 +261,12 @@ export const GetUserAvatarResponse = zod.object({
   "accessoryColor": zod.string(),
   "accessories": zod.array(zod.object({
   "name": zod.string(),
-  "color": zod.string()
+  "color": zod.string(),
+  "position": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "scale": zod.number()
+}).optional()
 })).optional(),
   "layerOrder": zod.array(zod.string()).optional(),
   "backgroundColor": zod.string(),

@@ -5,8 +5,10 @@
  * Twitch Avatar Studio API
  * OpenAPI spec version: 0.1.0
  */
+import type { AccessoryItemPosition } from './accessoryItemPosition';
 
 export interface AccessoryItem {
   name: string;
   color: string;
+  position?: AccessoryItemPosition;
 }

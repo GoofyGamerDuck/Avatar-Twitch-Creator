@@ -223,6 +223,17 @@ components:
         head:
           $ref: "#/components/schemas/PartPosition"
 
+    AccessoryItemPosition:
+      type: object
+      required: [x, y, scale]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        scale:
+          type: number
+
     AccessoryItem:
       type: object
       required: [name, color]
@@ -231,6 +242,8 @@ components:
           type: string
         color:
           type: string
+        position:
+          $ref: "#/components/schemas/AccessoryItemPosition"
 
     AvatarSettings:
       type: object

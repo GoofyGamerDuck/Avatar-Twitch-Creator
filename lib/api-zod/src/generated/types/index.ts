@@ -7,6 +7,7 @@
  */
 
 export * from './accessoryItem';
+export * from './accessoryItemPosition';
 export * from './avatarInput';
 export * from './avatarPart';
 export * from './avatarSettings';

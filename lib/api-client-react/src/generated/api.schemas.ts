@@ -33,9 +33,16 @@ export interface PartPositions {
   head?: PartPosition;
 }
 
+export interface AccessoryItemPosition {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface AccessoryItem {
   name: string;
   color: string;
+  position?: AccessoryItemPosition;
 }
 
 export interface AvatarSettings {
