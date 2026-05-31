@@ -9,17 +9,12 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: auth
-    description: Authentication
   - name: avatar
-    description: Avatar management
   - name: users
-    description: Public user data
   - name: parts
-    description: Avatar parts (custom uploaded assets)
+  - name: voices
   - name: storage
-    description: Object storage upload and serving
 paths:
   /healthz:
     get:
@@ -70,7 +65,7 @@ paths:
     get:
       operationId: getMyAvatar
       tags: [avatar]
-      summary: Get authenticated user's avatar and voice settings
+      summary: Get authenticated user's avatar settings
       responses:
         "200":
           description: Avatar settings
@@ -87,7 +82,7 @@ paths:
     put:
       operationId: saveAvatar
       tags: [avatar]
-      summary: Save avatar and voice settings for the current user
+      summary: Save avatar settings
       requestBody:
         required: true
         content:
@@ -112,7 +107,7 @@ paths:
     get:
       operationId: getUserAvatar
       tags: [users]
-      summary: Get avatar and voice settings for a Twitch username
+      summary: Get avatar settings for a Twitch username
       parameters:
         - name: username
           in: path
@@ -121,7 +116,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Avatar settings for the user
+          description: Avatar settings
           content:
             application/json:
               schema:
@@ -140,11 +135,24 @@ paths:
       summary: List all active custom avatar parts
       responses:
         "200":
-          description: Active avatar parts
+          description: Active parts
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PartsListResponse"
+
+  /voices:
+    get:
+      operationId: getVoices
+      tags: [voices]
+      summary: List all active voices
+      responses:
+        "200":
+          description: Active voices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoicesListResponse"
 
   /storage/uploads/request-url:
     post:
@@ -195,6 +203,29 @@ components:
         profileImageUrl:
           type: ["string", "null"]
 
+    PartPosition:
+      type: object
+      required: [x, y]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+
+    PartPositions:
+      type: object
+      properties:
+        hair:
+          $ref: "#/components/schemas/PartPosition"
+        eyes:
+          $ref: "#/components/schemas/PartPosition"
+        mouth:
+          $ref: "#/components/schemas/PartPosition"
+        outfit:
+          $ref: "#/components/schemas/PartPosition"
+        accessory:
+          $ref: "#/components/schemas/PartPosition"
+
     AvatarSettings:
       type: object
       required: [id, userId, skinTone, hairStyle, hairColor, eyeStyle, mouthStyle, outfitStyle, accessory, voiceId]
@@ -219,6 +250,8 @@ components:
           type: ["string", "null"]
         voiceId:
           type: string
+        partPositions:
+          $ref: "#/components/schemas/PartPositions"
 
     AvatarInput:
       type: object
@@ -240,6 +273,8 @@ components:
           type: ["string", "null"]
         voiceId:
           type: string
+        partPositions:
+          $ref: "#/components/schemas/PartPositions"
 
     PublicAvatarResponse:
       type: object
@@ -270,6 +305,8 @@ components:
           type: string
         isActive:
           type: boolean
+        isBuiltIn:
+          type: boolean
         sortOrder:
           type: integer
 
@@ -281,6 +318,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AvatarPart"
+
+    Voice:
+      type: object
+      required: [id, name, description, pitch, rate]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        pitch:
+          type: number
+        rate:
+          type: number
+        browserVoiceName:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        isBuiltIn:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    VoicesListResponse:
+      type: object
+      required: [voices]
+      properties:
+        voices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Voice"
 
     UploadUrlRequest:
       type: object

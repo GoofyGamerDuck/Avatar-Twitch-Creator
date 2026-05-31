@@ -5,6 +5,7 @@
  * Twitch Avatar Studio API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartPositions } from './partPositions';
 
 export interface AvatarSettings {
   id: number;
@@ -18,4 +19,5 @@ export interface AvatarSettings {
   /** @nullable */
   accessory: string | null;
   voiceId: string;
+  partPositions?: PartPositions;
 }

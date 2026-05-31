@@ -1,6 +1,9 @@
 import React from 'react';
 import { SKIN_TONES, HAIR_COLORS } from '../lib/constants';
 
+export interface PartPosition { x: number; y: number; }
+export type PartPositionsMap = Partial<Record<'hair' | 'eyes' | 'mouth' | 'outfit' | 'accessory', PartPosition>>;
+
 interface AvatarPreviewProps {
   skinTone: string;
   hairStyle: string;
@@ -10,181 +13,303 @@ interface AvatarPreviewProps {
   outfitStyle: string;
   accessory: string | null;
   customPartImages?: Record<string, string>;
+  partPositions?: PartPositionsMap | null;
   size?: string;
   className?: string;
 }
 
+const OUTFIT_COLORS: Record<string, string> = {
+  casual: '#2563eb',
+  formal: '#1e293b',
+  sporty: '#16a34a',
+  hoodie: '#4f46e5',
+  shirt: '#dc2626',
+  dress: '#9333ea',
+};
+
+function t(pos: PartPosition | undefined) {
+  if (!pos || (pos.x === 0 && pos.y === 0)) return undefined;
+  return `translate(${pos.x} ${pos.y})`;
+}
+
+// Hair drawn BEHIND the head (long hanging parts)
+function BackHair({ style, color, pos }: { style: string; color: string; pos?: PartPosition }) {
+  const hasBack = ['long', 'wavy', 'ponytail'].includes(style);
+  if (!hasBack) return null;
+  return (
+    <g fill={color} transform={t(pos)}>
+      {style === 'long' && (
+        <>
+          <path d="M 57 88 Q 50 115 48 158 Q 62 150 68 128 L 70 88" />
+          <path d="M 143 88 Q 150 115 152 158 Q 138 150 132 128 L 130 88" />
+        </>
+      )}
+      {style === 'wavy' && (
+        <>
+          <path d="M 57 88 Q 46 100 50 116 Q 44 132 50 152 Q 64 146 64 132 Q 58 116 64 100 L 66 88" />
+          <path d="M 143 88 Q 154 100 150 116 Q 156 132 150 152 Q 136 146 136 132 Q 142 116 136 100 L 134 88" />
+        </>
+      )}
+      {style === 'ponytail' && (
+        <path d="M 93 46 Q 88 85 86 125 Q 90 155 100 162 Q 110 155 114 125 Q 112 85 107 46" />
+      )}
+    </g>
+  );
+}
+
+// Hair drawn IN FRONT of the head (the cap/top portion)
+function FrontHair({ style, color, customUrl, pos }: {
+  style: string; color: string; customUrl?: string; pos?: PartPosition;
+}) {
+  return (
+    <g transform={t(pos)}>
+      {customUrl ? (
+        <image
+          href={customUrl}
+          x="48" y="38" width="104" height="70"
+          preserveAspectRatio="xMidYMid meet"
+          clipPath="url(#headClip)"
+        />
+      ) : (
+        <g fill={color}>
+          {style === 'short' && (
+            <path d="M 55 90 Q 55 38 100 38 Q 145 38 145 90 Q 140 65 100 50 Q 60 65 55 90" />
+          )}
+          {style === 'long' && (
+            <path d="M 57 88 Q 57 37 100 37 Q 143 37 143 88 Q 138 62 100 48 Q 62 62 57 88" />
+          )}
+          {style === 'wavy' && (
+            <path d="M 57 88 Q 57 37 100 37 Q 143 37 143 88 Q 138 62 100 48 Q 62 62 57 88" />
+          )}
+          {style === 'curly' && (
+            <>
+              <circle cx="68" cy="55" r="16" />
+              <circle cx="100" cy="42" r="18" />
+              <circle cx="132" cy="55" r="16" />
+              <circle cx="58" cy="78" r="14" />
+              <circle cx="142" cy="78" r="14" />
+              <path d="M 54 90 Q 54 60 100 45 Q 146 60 146 90" />
+            </>
+          )}
+          {style === 'bun' && (
+            <>
+              <path d="M 57 90 Q 57 50 100 50 Q 143 50 143 90 Q 138 68 100 56 Q 62 68 57 90" />
+              <circle cx="100" cy="43" r="13" />
+            </>
+          )}
+          {style === 'ponytail' && (
+            <>
+              <path d="M 57 90 Q 57 38 100 38 Q 143 38 143 90 Q 138 62 100 48 Q 62 62 57 90" />
+              <rect x="95" y="42" width="10" height="12" rx="3" fill={color} opacity="0.7" />
+            </>
+          )}
+          {style === 'buzz' && (
+            <path d="M 57 90 Q 57 45 100 43 Q 143 45 143 90 Q 141 72 100 62 Q 59 72 57 90" opacity="0.85" />
+          )}
+          {!['short','long','wavy','curly','bun','ponytail','buzz'].includes(style) && (
+            <path d="M 55 90 Q 55 38 100 38 Q 145 38 145 90 Q 140 65 100 50 Q 60 65 55 90" />
+          )}
+        </g>
+      )}
+    </g>
+  );
+}
+
 const AvatarPreview: React.FC<AvatarPreviewProps> = ({
-  skinTone,
-  hairStyle,
-  hairColor,
-  eyeStyle,
-  mouthStyle,
-  outfitStyle,
-  accessory,
-  customPartImages = {},
+  skinTone, hairStyle, hairColor, eyeStyle, mouthStyle,
+  outfitStyle, accessory, customPartImages = {}, partPositions,
   className = "",
 }) => {
-  const skinHex = SKIN_TONES.find(s => s.id === skinTone)?.hex || SKIN_TONES[0].hex;
-  const hairHex = HAIR_COLORS.find(h => h.id === hairColor)?.hex || HAIR_COLORS[0].hex;
+  const skinHex = SKIN_TONES.find(s => s.id === skinTone)?.hex ?? SKIN_TONES[0].hex;
+  const hairHex = HAIR_COLORS.find(h => h.id === hairColor)?.hex ?? HAIR_COLORS[0].hex;
+  const outfitColor = OUTFIT_COLORS[outfitStyle] ?? '#2563eb';
 
-  const customHairUrl = customPartImages[hairStyle];
-  const customEyeUrl = customPartImages[eyeStyle];
-  const customMouthUrl = customPartImages[mouthStyle];
-  const customOutfitUrl = customPartImages[outfitStyle];
-  const customAccessoryUrl = accessory ? customPartImages[accessory] : undefined;
+  const positions: PartPositionsMap = partPositions ?? {};
+
+  const customHairUrl = customPartImages[hairStyle] || undefined;
+  const customEyeUrl = customPartImages[eyeStyle] || undefined;
+  const customMouthUrl = customPartImages[mouthStyle] || undefined;
+  const customOutfitUrl = customPartImages[outfitStyle] || undefined;
+  const customAccessoryUrl = accessory ? (customPartImages[accessory] || undefined) : undefined;
 
   return (
     <div className={`relative w-full h-full aspect-square bg-muted rounded-2xl overflow-hidden flex items-center justify-center border border-border shadow-inner ${className}`}>
       <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md">
         <defs>
           <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
             <stop offset="100%" stopColor="var(--background)" stopOpacity="0" />
           </radialGradient>
           <clipPath id="headClip">
-            <circle cx="100" cy="90" r="50" />
+            <circle cx="100" cy="90" r="52" />
           </clipPath>
           <clipPath id="bodyClip">
-            <rect x="40" y="120" width="120" height="80" />
+            <rect x="35" y="122" width="130" height="78" />
           </clipPath>
         </defs>
 
-        {/* Background ambient glow */}
+        {/* Background */}
         <circle cx="100" cy="100" r="90" fill="url(#bgGlow)" opacity="0.5" />
 
-        {/* Body / Outfit */}
-        <g id="outfit">
+        {/* 1. Back hair — appears behind head and outfit */}
+        <BackHair style={hairStyle} color={hairHex} pos={positions.hair} />
+
+        {/* 2. Outfit / body */}
+        <g transform={t(positions.outfit)}>
           {customOutfitUrl ? (
-            <image
-              href={customOutfitUrl}
-              x="40" y="125" width="120" height="75"
-              preserveAspectRatio="xMidYMid meet"
-              clipPath="url(#bodyClip)"
-            />
-          ) : outfitStyle === 'hoodie' ? (
-            <path d="M50 200 Q 50 130 100 130 Q 150 130 150 200" fill="#4f46e5" />
+            <image href={customOutfitUrl} x="35" y="125" width="130" height="75"
+              preserveAspectRatio="xMidYMid meet" clipPath="url(#bodyClip)" />
           ) : (
-            <path d="M60 200 Q 60 140 100 140 Q 140 140 140 200" fill="#2563eb" />
-          )}
-        </g>
-
-        {/* Head */}
-        <circle cx="100" cy="90" r="45" fill={skinHex} />
-
-        {/* Hair */}
-        <g id="hair">
-          {customHairUrl ? (
-            <image
-              href={customHairUrl}
-              x="48" y="38" width="104" height="70"
-              preserveAspectRatio="xMidYMid meet"
-              clipPath="url(#headClip)"
-            />
-          ) : (
-            <g fill={hairHex}>
-              {hairStyle === 'short' && (
-                <path d="M 50 90 Q 50 40 100 40 Q 150 40 150 90 Q 150 70 100 50 Q 50 70 50 90" />
-              )}
-              {hairStyle === 'long' && (
-                <path d="M 55 90 Q 55 35 100 35 Q 145 35 145 90 L 150 140 Q 100 120 50 140 Z" />
-              )}
-              {hairStyle === 'bun' && (
+            <>
+              {outfitStyle === 'hoodie' && (
                 <>
-                  <path d="M 55 85 Q 55 40 100 40 Q 145 40 145 85 Q 145 60 100 50 Q 55 60 55 85" />
-                  <circle cx="100" cy="42" r="10" />
+                  <path d="M 55 200 Q 52 132 100 132 Q 148 132 145 200" fill={outfitColor} />
+                  <path d="M 65 200 Q 63 145 100 145 Q 137 145 135 200" fill={outfitColor} opacity="0.6" />
                 </>
               )}
-              {hairStyle === 'curly' && (
-                <path d="M 52 88 Q 45 55 65 42 Q 80 32 100 35 Q 120 32 135 42 Q 155 55 148 88 Q 130 50 100 45 Q 70 50 52 88" />
+              {outfitStyle === 'dress' && (
+                <path d="M 45 200 Q 55 125 100 128 Q 145 125 155 200" fill={outfitColor} />
               )}
-              {!['short', 'long', 'bun', 'curly'].includes(hairStyle) && (
-                <path d="M 55 85 Q 55 40 100 40 Q 145 40 145 85 Q 145 60 100 45 Q 55 60 55 85" />
+              {outfitStyle === 'sporty' && (
+                <>
+                  <path d="M 60 200 Q 60 138 100 136 Q 140 138 140 200" fill={outfitColor} />
+                  <path d="M 78 200 L 78 155 L 122 155 L 122 200" fill={outfitColor} opacity="0.4" />
+                </>
               )}
-            </g>
+              {!['hoodie', 'dress', 'sporty'].includes(outfitStyle) && (
+                <path d="M 62 200 Q 62 138 100 136 Q 138 138 138 200" fill={outfitColor} />
+              )}
+            </>
           )}
         </g>
 
-        {/* Eyes */}
-        <g id="eyes">
+        {/* 3. Head */}
+        <circle cx="100" cy="90" r="46" fill={skinHex} />
+
+        {/* 4. Front hair — on top of head */}
+        <FrontHair style={hairStyle} color={hairHex} customUrl={customHairUrl} pos={positions.hair} />
+
+        {/* 5. Eyes */}
+        <g transform={t(positions.eyes)}>
           {customEyeUrl ? (
-            <image
-              href={customEyeUrl}
-              x="70" y="75" width="60" height="22"
-              preserveAspectRatio="xMidYMid meet"
-            />
+            <image href={customEyeUrl} x="70" y="76" width="60" height="22"
+              preserveAspectRatio="xMidYMid meet" />
           ) : (
             <g fill="#1e1b4b">
-              {eyeStyle === 'round' ? (
+              {eyeStyle === 'round' && (
                 <>
-                  <circle cx="85" cy="85" r="5" />
-                  <circle cx="115" cy="85" r="5" />
+                  <circle cx="83" cy="86" r="5.5" />
+                  <circle cx="117" cy="86" r="5.5" />
+                  <circle cx="81" cy="84" r="1.5" fill="white" />
+                  <circle cx="115" cy="84" r="1.5" fill="white" />
                 </>
-              ) : eyeStyle === 'sleepy' ? (
+              )}
+              {eyeStyle === 'sleepy' && (
                 <>
-                  <path d="M80 86 Q85 82 90 86" fill="#1e1b4b" />
-                  <path d="M110 86 Q115 82 120 86" fill="#1e1b4b" />
+                  <path d="M 76 88 Q 83 82 90 88" fill="#1e1b4b" />
+                  <path d="M 110 88 Q 117 82 124 88" fill="#1e1b4b" />
+                  <path d="M 76 88 Q 83 86 90 88" fill="none" stroke="#1e1b4b" strokeWidth="1.5" />
+                  <path d="M 110 88 Q 117 86 124 88" fill="none" stroke="#1e1b4b" strokeWidth="1.5" />
                 </>
-              ) : (
+              )}
+              {eyeStyle === 'almond' && (
                 <>
-                  <ellipse cx="85" cy="85" rx="6" ry="4" />
-                  <ellipse cx="115" cy="85" rx="6" ry="4" />
+                  <path d="M 76 86 Q 83 80 90 86 Q 83 92 76 86" />
+                  <path d="M 110 86 Q 117 80 124 86 Q 117 92 110 86" />
+                </>
+              )}
+              {eyeStyle === 'hooded' && (
+                <>
+                  <ellipse cx="83" cy="87" rx="7" ry="5" />
+                  <ellipse cx="117" cy="87" rx="7" ry="5" />
+                  <path d="M 76 84 Q 83 80 90 84" fill="#614028" opacity="0.5" />
+                  <path d="M 110 84 Q 117 80 124 84" fill="#614028" opacity="0.5" />
+                </>
+              )}
+              {eyeStyle === 'monolid' && (
+                <>
+                  <rect x="76" y="83" width="14" height="8" rx="4" />
+                  <rect x="110" y="83" width="14" height="8" rx="4" />
+                </>
+              )}
+              {(eyeStyle === 'default' || !['round','sleepy','almond','hooded','monolid'].includes(eyeStyle)) && (
+                <>
+                  <ellipse cx="83" cy="86" rx="6.5" ry="5" />
+                  <ellipse cx="117" cy="86" rx="6.5" ry="5" />
+                  <circle cx="81" cy="84" r="1.5" fill="white" />
+                  <circle cx="115" cy="84" r="1.5" fill="white" />
                 </>
               )}
             </g>
           )}
         </g>
 
-        {/* Mouth */}
-        <g id="mouth">
+        {/* 6. Mouth */}
+        <g transform={t(positions.mouth)}>
           {customMouthUrl ? (
-            <image
-              href={customMouthUrl}
-              x="82" y="102" width="36" height="20"
-              preserveAspectRatio="xMidYMid meet"
-            />
+            <image href={customMouthUrl} x="82" y="104" width="36" height="20"
+              preserveAspectRatio="xMidYMid meet" />
           ) : (
-            <g stroke="#1e1b4b" strokeWidth="2" fill="transparent">
-              {mouthStyle === 'smile' && <path d="M 90 110 Q 100 120 110 110" />}
-              {mouthStyle === 'neutral' && <line x1="90" y1="110" x2="110" y2="110" />}
-              {mouthStyle === 'open' && <circle cx="100" cy="110" r="4" fill="#1e1b4b" />}
-              {mouthStyle === 'smirk' && <path d="M 90 112 Q 100 108 110 110" />}
-              {!['smile', 'neutral', 'open', 'smirk'].includes(mouthStyle) && (
-                <path d="M 85 110 Q 100 125 115 110" />
+            <g stroke="#1e1b4b" strokeWidth="2" fill="transparent" strokeLinecap="round">
+              {mouthStyle === 'smile' && <path d="M 88 110 Q 100 122 112 110" />}
+              {mouthStyle === 'neutral' && <line x1="88" y1="112" x2="112" y2="112" />}
+              {mouthStyle === 'smirk' && <path d="M 88 113 Q 98 108 112 110" />}
+              {mouthStyle === 'open' && (
+                <ellipse cx="100" cy="113" rx="9" ry="6" fill="#cc5c5c" stroke="#1e1b4b" strokeWidth="1.5" />
+              )}
+              {mouthStyle === 'wide-smile' && <path d="M 84 109 Q 100 126 116 109" />}
+              {!['smile','neutral','smirk','open','wide-smile'].includes(mouthStyle) && (
+                <path d="M 88 110 Q 100 122 112 110" />
               )}
             </g>
           )}
         </g>
 
-        {/* Accessory */}
+        {/* 7. Accessory */}
         {accessory && accessory !== 'none' && (
-          <g id="accessory">
+          <g transform={t(positions.accessory)}>
             {customAccessoryUrl ? (
-              <image
-                href={customAccessoryUrl}
-                x="70" y="70" width="60" height="35"
-                preserveAspectRatio="xMidYMid meet"
-              />
+              <image href={customAccessoryUrl} x="68" y="70" width="64" height="36"
+                preserveAspectRatio="xMidYMid meet" />
             ) : (
               <>
                 {accessory === 'glasses' && (
-                  <g stroke="#3b82f6" strokeWidth="2" fill="transparent">
-                    <circle cx="85" cy="85" r="10" />
-                    <circle cx="115" cy="85" r="10" />
-                    <line x1="95" y1="85" x2="105" y2="85" />
+                  <g stroke="#3b82f6" strokeWidth="2" fill="rgba(147,197,253,0.2)">
+                    <circle cx="83" cy="86" r="11" />
+                    <circle cx="117" cy="86" r="11" />
+                    <line x1="94" y1="86" x2="106" y2="86" stroke="#3b82f6" strokeWidth="2" />
+                    <line x1="72" y1="82" x2="68" y2="78" stroke="#3b82f6" strokeWidth="1.5" />
+                    <line x1="128" y1="82" x2="132" y2="78" stroke="#3b82f6" strokeWidth="1.5" />
                   </g>
                 )}
                 {accessory === 'sunglasses' && (
-                  <g fill="#000000">
-                    <rect x="75" y="78" width="20" height="14" rx="4" />
-                    <rect x="105" y="78" width="20" height="14" rx="4" />
-                    <line x1="95" y1="85" x2="105" y2="85" stroke="#000" strokeWidth="2" />
+                  <g>
+                    <rect x="72" y="79" width="22" height="14" rx="5" fill="#111" />
+                    <rect x="106" y="79" width="22" height="14" rx="5" fill="#111" />
+                    <line x1="94" y1="86" x2="106" y2="86" stroke="#555" strokeWidth="2" />
+                    <line x1="72" y1="83" x2="68" y2="79" stroke="#555" strokeWidth="1.5" />
+                    <line x1="128" y1="83" x2="132" y2="79" stroke="#555" strokeWidth="1.5" />
                   </g>
                 )}
                 {accessory === 'hat' && (
                   <g fill={hairHex}>
-                    <rect x="65" y="52" width="70" height="12" rx="2" />
-                    <rect x="78" y="32" width="44" height="24" rx="4" />
+                    <rect x="63" y="54" width="74" height="11" rx="4" />
+                    <rect x="76" y="30" width="48" height="27" rx="5" />
+                  </g>
+                )}
+                {accessory === 'headphones' && (
+                  <g stroke="#6366f1" strokeWidth="3" fill="none">
+                    <path d="M 60 90 Q 60 48 100 48 Q 140 48 140 90" />
+                    <rect x="54" y="83" width="13" height="18" rx="4" fill="#6366f1" stroke="none" />
+                    <rect x="133" y="83" width="13" height="18" rx="4" fill="#6366f1" stroke="none" />
+                  </g>
+                )}
+                {accessory === 'crown' && (
+                  <g fill="#f59e0b" stroke="#d97706" strokeWidth="1">
+                    <path d="M 70 60 L 75 40 L 90 52 L 100 36 L 110 52 L 125 40 L 130 60 Z" />
+                    <circle cx="75" cy="42" r="3" fill="#ef4444" />
+                    <circle cx="100" cy="38" r="3" fill="#3b82f6" />
+                    <circle cx="125" cy="42" r="3" fill="#10b981" />
                   </g>
                 )}
               </>

@@ -1,7 +1,20 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+
+export interface PartPosition {
+  x: number;
+  y: number;
+}
+
+export interface PartPositionsMap {
+  hair?: PartPosition;
+  eyes?: PartPosition;
+  mouth?: PartPosition;
+  outfit?: PartPosition;
+  accessory?: PartPosition;
+}
 
 export const avatarSettingsTable = pgTable("avatar_settings", {
   id: serial("id").primaryKey(),
@@ -17,6 +30,7 @@ export const avatarSettingsTable = pgTable("avatar_settings", {
   outfitStyle: text("outfit_style").notNull().default("casual"),
   accessory: text("accessory"),
   voiceId: text("voice_id").notNull().default("alloy"),
+  partPositions: jsonb("part_positions").$type<PartPositionsMap>().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

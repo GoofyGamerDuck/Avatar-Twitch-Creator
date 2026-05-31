@@ -18,6 +18,19 @@ export interface User {
   profileImageUrl?: string | null;
 }
 
+export interface PartPosition {
+  x: number;
+  y: number;
+}
+
+export interface PartPositions {
+  hair?: PartPosition;
+  eyes?: PartPosition;
+  mouth?: PartPosition;
+  outfit?: PartPosition;
+  accessory?: PartPosition;
+}
+
 export interface AvatarSettings {
   id: number;
   userId: number;
@@ -30,6 +43,7 @@ export interface AvatarSettings {
   /** @nullable */
   accessory: string | null;
   voiceId: string;
+  partPositions?: PartPositions;
 }
 
 export interface AvatarInput {
@@ -42,6 +56,7 @@ export interface AvatarInput {
   /** @nullable */
   accessory?: string | null;
   voiceId: string;
+  partPositions?: PartPositions;
 }
 
 export interface PublicAvatarResponse {
@@ -59,11 +74,29 @@ export interface AvatarPart {
   label: string;
   imageUrl: string;
   isActive?: boolean;
+  isBuiltIn?: boolean;
   sortOrder: number;
 }
 
 export interface PartsListResponse {
   parts: AvatarPart[];
+}
+
+export interface Voice {
+  id: number;
+  name: string;
+  description: string;
+  pitch: number;
+  rate: number;
+  /** @nullable */
+  browserVoiceName?: string | null;
+  isActive?: boolean;
+  isBuiltIn?: boolean;
+  sortOrder?: number;
+}
+
+export interface VoicesListResponse {
+  voices: Voice[];
 }
 
 export interface UploadUrlRequest {

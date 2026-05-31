@@ -6,13 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AvatarPart {
+export interface Voice {
   id: number;
-  category: string;
   name: string;
-  label: string;
-  imageUrl: string;
+  description: string;
+  pitch: number;
+  rate: number;
+  /** @nullable */
+  browserVoiceName?: string | null;
   isActive?: boolean;
   isBuiltIn?: boolean;
-  sortOrder: number;
+  sortOrder?: number;
 }

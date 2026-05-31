@@ -5,8 +5,9 @@ export const avatarPartsTable = pgTable("avatar_parts", {
   category: text("category").notNull(),
   name: text("name").notNull(),
   label: text("label").notNull(),
-  imageUrl: text("image_url").notNull(),
+  imageUrl: text("image_url").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),
+  isBuiltIn: boolean("is_built_in").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

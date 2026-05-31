@@ -1,26 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { Layout } from "@/components/Layout";
-import { AvatarPreview } from "@/components/AvatarPreview";
-import { useGetMe, useGetMyAvatar, useSaveAvatar, getGetMeQueryKey, getGetMyAvatarQueryKey } from "@workspace/api-client-react";
+import { AvatarPreview, type PartPositionsMap } from "@/components/AvatarPreview";
+import {
+  useGetMe, useGetMyAvatar, useSaveAvatar, useGetVoices,
+  getGetMeQueryKey, getGetMyAvatarQueryKey,
+} from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Square } from "lucide-react";
-import { SKIN_TONES, HAIR_COLORS, HAIR_STYLES, EYE_STYLES, MOUTH_STYLES, OUTFIT_STYLES, ACCESSORIES, VOICES } from "@/lib/constants";
+import { Play, Square, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { SKIN_TONES, HAIR_COLORS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
-
-const VOICE_PARAMS: Record<string, { pitch: number; rate: number }> = {
-  alloy: { pitch: 1.0, rate: 1.0 },
-  echo: { pitch: 0.85, rate: 0.9 },
-  fable: { pitch: 1.15, rate: 1.05 },
-  onyx: { pitch: 0.7, rate: 0.85 },
-  nova: { pitch: 1.2, rate: 1.1 },
-  shimmer: { pitch: 1.3, rate: 1.05 },
-};
 
 interface CustomPart {
   id: number;
@@ -30,10 +26,78 @@ interface CustomPart {
   imageUrl: string;
 }
 
+interface VoiceConfig {
+  id: number;
+  name: string;
+  description: string;
+  pitch: number;
+  rate: number;
+  browserVoiceName?: string | null;
+}
+
+// Position slider for one axis
+function AxisSlider({ label, value, onChange }: {
+  label: string; value: number; onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground w-4">{label}</span>
+      <input
+        type="range" min="-40" max="40" step="1" value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="flex-1 h-1.5 accent-primary"
+      />
+      <span className="text-xs text-muted-foreground w-8 text-right">{value > 0 ? `+${value}` : value}</span>
+    </div>
+  );
+}
+
+function PositionControl({ part, positions, onChange }: {
+  part: keyof PartPositionsMap;
+  positions: PartPositionsMap;
+  onChange: (part: keyof PartPositionsMap, pos: { x: number; y: number }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const pos = positions[part] ?? { x: 0, y: 0 };
+  const isSet = pos.x !== 0 || pos.y !== 0;
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+          isSet ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <SlidersHorizontal className="h-3 w-3" />
+        Position{isSet ? ` (${pos.x > 0 ? '+' : ''}${pos.x}, ${pos.y > 0 ? '+' : ''}${pos.y})` : ''}
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="mt-1.5 p-2.5 bg-muted/60 rounded-lg space-y-2">
+          <AxisSlider label="X" value={pos.x} onChange={v => onChange(part, { ...pos, x: v })} />
+          <AxisSlider label="Y" value={pos.y} onChange={v => onChange(part, { ...pos, y: v })} />
+          {isSet && (
+            <button
+              type="button"
+              className="text-xs text-destructive hover:underline"
+              onClick={() => onChange(part, { x: 0, y: 0 })}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Studio() {
   const [, setLocation] = useLocation();
   const { data: user, isLoading: userLoading } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false } });
   const { data: avatarSettings, isLoading: avatarLoading } = useGetMyAvatar({ query: { queryKey: getGetMyAvatarQueryKey(), enabled: !!user } });
+  const { data: voicesData } = useGetVoices();
   const saveAvatar = useSaveAvatar();
   const { toast } = useToast();
 
@@ -45,13 +109,13 @@ export default function Studio() {
     mouthStyle: "smile",
     outfitStyle: "casual",
     accessory: "none",
-    voiceId: "alloy",
+    voiceId: "Alloy",
   });
-
+  const [partPositions, setPartPositions] = useState<PartPositionsMap>({});
   const [customParts, setCustomParts] = useState<CustomPart[]>([]);
   const [testText, setTestText] = useState("Hello! This is how my voice sounds in your stream.");
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
     if (!userLoading && !user) setLocation("/");
@@ -69,25 +133,32 @@ export default function Studio() {
         accessory: avatarSettings.accessory || "none",
         voiceId: avatarSettings.voiceId,
       });
+      setPartPositions((avatarSettings.partPositions as PartPositionsMap) ?? {});
     }
   }, [avatarSettings]);
 
   useEffect(() => {
     fetch("/api/parts")
       .then(r => r.json())
-      .then((data: { parts: CustomPart[] }) => setCustomParts(data.parts ?? []))
+      .then((d: { parts: CustomPart[] }) => setCustomParts(d.parts ?? []))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-    };
+    if (!window.speechSynthesis) return;
+    const load = () => setBrowserVoices([...window.speechSynthesis.getVoices()]);
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
   }, []);
 
-  const updateSetting = (key: string, value: string) => {
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
+
+  const updateSetting = (key: string, value: string) =>
     setSettings(prev => ({ ...prev, [key]: value }));
-  };
+
+  const updatePosition = (part: keyof PartPositionsMap, pos: { x: number; y: number }) =>
+    setPartPositions(prev => ({ ...prev, [part]: pos }));
 
   function handleTestVoice() {
     if (!window.speechSynthesis || !testText.trim()) return;
@@ -96,73 +167,85 @@ export default function Studio() {
       setIsSpeaking(false);
       return;
     }
+    const voices = voicesData?.voices ?? [];
+    const voiceConfig = voices.find((v: VoiceConfig) =>
+      v.name.toLowerCase() === settings.voiceId.toLowerCase()
+    ) as VoiceConfig | undefined;
+
     const utt = new SpeechSynthesisUtterance(testText.trim());
-    const params = VOICE_PARAMS[settings.voiceId] ?? VOICE_PARAMS.alloy;
-    utt.pitch = params.pitch;
-    utt.rate = params.rate;
+    utt.pitch = voiceConfig?.pitch ?? 1.0;
+    utt.rate = voiceConfig?.rate ?? 1.0;
+
+    if (voiceConfig?.browserVoiceName) {
+      const bv = browserVoices.find(v => v.name === voiceConfig.browserVoiceName);
+      if (bv) utt.voice = bv;
+    }
+
     utt.onstart = () => setIsSpeaking(true);
     utt.onend = () => setIsSpeaking(false);
     utt.onerror = () => setIsSpeaking(false);
-    utteranceRef.current = utt;
     window.speechSynthesis.speak(utt);
   }
 
   const handleSave = () => {
+    const cleanPositions: PartPositionsMap = {};
+    for (const [k, v] of Object.entries(partPositions)) {
+      if (v && (v.x !== 0 || v.y !== 0)) {
+        (cleanPositions as Record<string, typeof v>)[k] = v;
+      }
+    }
     saveAvatar.mutate({
       data: {
         ...settings,
         accessory: settings.accessory === "none" ? null : settings.accessory,
-      }
-    }, {
-      onSuccess: () => {
-        toast({ title: "Avatar saved!", description: "Your profile has been updated." });
+        partPositions: cleanPositions,
       },
-      onError: () => {
-        toast({ title: "Error", description: "Failed to save avatar.", variant: "destructive" });
-      }
+    }, {
+      onSuccess: () => toast({ title: "Avatar saved!", description: "Your profile has been updated." }),
+      onError: () => toast({ title: "Error", description: "Failed to save avatar.", variant: "destructive" }),
     });
   };
 
-  // Build custom parts image map: name → imageUrl
   const customPartImages: Record<string, string> = {};
-  customParts.forEach(p => { customPartImages[p.name] = p.imageUrl; });
+  customParts.forEach(p => { if (p.imageUrl) customPartImages[p.name] = p.imageUrl; });
 
-  // Merge built-in options with custom parts per category
-  const hairOptions = [
-    ...HAIR_STYLES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1), isCustom: false })),
-    ...customParts.filter(p => p.category === "hair_style").map(p => ({ value: p.name, label: p.label, isCustom: true })),
-  ];
-  const eyeOptions = [
-    ...EYE_STYLES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1), isCustom: false })),
-    ...customParts.filter(p => p.category === "eye_style").map(p => ({ value: p.name, label: p.label, isCustom: true })),
-  ];
-  const mouthOptions = [
-    ...MOUTH_STYLES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1), isCustom: false })),
-    ...customParts.filter(p => p.category === "mouth_style").map(p => ({ value: p.name, label: p.label, isCustom: true })),
-  ];
-  const outfitOptions = [
-    ...OUTFIT_STYLES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1), isCustom: false })),
-    ...customParts.filter(p => p.category === "outfit_style").map(p => ({ value: p.name, label: p.label, isCustom: true })),
-  ];
-  const accessoryOptions = [
-    ...ACCESSORIES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1), isCustom: false })),
-    ...customParts.filter(p => p.category === "accessory").map(p => ({ value: p.name, label: p.label, isCustom: true })),
-  ];
+  // Merge built-in + custom parts per category
+  const voices = voicesData?.voices ?? [];
 
-  if (userLoading || avatarLoading) return <Layout><div className="flex-1 flex items-center justify-center">Loading studio...</div></Layout>;
+  function partOptions(category: string, builtins: string[]) {
+    const customs = customParts.filter(p => p.category === category);
+    return [
+      ...builtins.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' '), isCustom: false })),
+      ...customs.map(p => ({ value: p.name, label: p.label, isCustom: true })),
+    ];
+  }
+
+  const hairOpts = partOptions("hair_style", ["short","long","curly","wavy","bun","ponytail","buzz"]);
+  const eyeOpts  = partOptions("eye_style",  ["default","round","almond","hooded","monolid","sleepy"]);
+  const mouthOpts= partOptions("mouth_style",["smile","neutral","smirk","open","wide-smile"]);
+  const outfitOpts=partOptions("outfit_style",["casual","formal","sporty","hoodie","shirt","dress"]);
+  const accessOpts=partOptions("accessory",  ["none","glasses","sunglasses","hat","headphones","crown"]);
+
+  if (userLoading || avatarLoading) {
+    return <Layout><div className="flex-1 flex items-center justify-center">Loading studio…</div></Layout>;
+  }
   if (!user) return null;
 
   return (
     <Layout>
       <div className="container max-w-7xl mx-auto p-4 flex-1 flex flex-col md:flex-row gap-8">
         {/* Preview Panel */}
-        <div className="w-full md:w-[400px] flex-shrink-0 flex flex-col gap-4">
+        <div className="w-full md:w-[380px] flex-shrink-0">
           <div className="bg-card border border-border rounded-3xl p-6 shadow-xl sticky top-24">
             <h2 className="text-xl font-bold font-mono mb-4 text-center">Live Preview</h2>
-            <AvatarPreview {...settings} customPartImages={customPartImages} />
+            <AvatarPreview
+              {...settings}
+              customPartImages={customPartImages}
+              partPositions={partPositions}
+            />
             <div className="mt-6 flex gap-3">
               <Button onClick={handleSave} className="flex-1" disabled={saveAvatar.isPending}>
-                {saveAvatar.isPending ? "Saving..." : "Save Avatar"}
+                {saveAvatar.isPending ? "Saving…" : "Save Avatar"}
               </Button>
               <Button asChild variant="outline" className="flex-1">
                 <Link href="/profile">View Profile</Link>
@@ -175,18 +258,19 @@ export default function Studio() {
         <div className="flex-1 bg-card border border-border rounded-3xl overflow-hidden shadow-xl flex flex-col">
           <div className="p-6 border-b border-border bg-muted/30">
             <h1 className="text-2xl font-bold font-mono">Customization Studio</h1>
-            <p className="text-muted-foreground text-sm">Tweak your avatar and select your TTS voice.</p>
+            <p className="text-muted-foreground text-sm">Drag sliders to reposition parts. Click "Save Avatar" when done.</p>
           </div>
 
           <ScrollArea className="flex-1 p-6">
-            <Tabs defaultValue="appearance" className="w-full">
+            <Tabs defaultValue="appearance">
               <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
                 <TabsTrigger value="appearance" className="text-base h-full">Appearance</TabsTrigger>
                 <TabsTrigger value="voice" className="text-base h-full">Voice & TTS</TabsTrigger>
               </TabsList>
 
               <TabsContent value="appearance" className="space-y-8">
-                <div className="space-y-4">
+                {/* Skin tone */}
+                <div className="space-y-3">
                   <Label className="text-base font-semibold">Skin Tone</Label>
                   <div className="flex flex-wrap gap-3">
                     {SKIN_TONES.map(tone => (
@@ -201,7 +285,8 @@ export default function Studio() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                {/* Hair color */}
+                <div className="space-y-3">
                   <Label className="text-base font-semibold">Hair Color</Label>
                   <div className="flex flex-wrap gap-3">
                     {HAIR_COLORS.map(color => (
@@ -216,105 +301,65 @@ export default function Studio() {
                   </div>
                 </div>
 
+                {/* Part selectors with position controls */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Hair Style</Label>
-                    <Select value={settings.hairStyle} onValueChange={(val) => updateSetting('hairStyle', val)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {hairOptions.map(o => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}{o.isCustom && <span className="ml-2 text-xs text-purple-500">✦ Custom</span>}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Eye Style</Label>
-                    <Select value={settings.eyeStyle} onValueChange={(val) => updateSetting('eyeStyle', val)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {eyeOptions.map(o => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}{o.isCustom && <span className="ml-2 text-xs text-purple-500">✦ Custom</span>}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Mouth Style</Label>
-                    <Select value={settings.mouthStyle} onValueChange={(val) => updateSetting('mouthStyle', val)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {mouthOptions.map(o => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}{o.isCustom && <span className="ml-2 text-xs text-purple-500">✦ Custom</span>}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Outfit Style</Label>
-                    <Select value={settings.outfitStyle} onValueChange={(val) => updateSetting('outfitStyle', val)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {outfitOptions.map(o => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}{o.isCustom && <span className="ml-2 text-xs text-purple-500">✦ Custom</span>}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Accessory</Label>
-                    <Select value={settings.accessory} onValueChange={(val) => updateSetting('accessory', val)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {accessoryOptions.map(o => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}{o.isCustom && <span className="ml-2 text-xs text-purple-500">✦ Custom</span>}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {[
+                    { key: 'hairStyle', label: 'Hair Style', part: 'hair' as const, opts: hairOpts },
+                    { key: 'eyeStyle',  label: 'Eye Style',  part: 'eyes' as const, opts: eyeOpts  },
+                    { key: 'mouthStyle',label: 'Mouth Style',part: 'mouth'as const, opts: mouthOpts},
+                    { key: 'outfitStyle',label:'Outfit',     part: 'outfit'as const,opts: outfitOpts},
+                    { key: 'accessory', label: 'Accessory',  part: 'accessory'as const,opts:accessOpts},
+                  ].map(({ key, label, part, opts }) => (
+                    <div key={key} className="space-y-1">
+                      <Label>{label}</Label>
+                      <Select value={settings[key as keyof typeof settings]} onValueChange={v => updateSetting(key, v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {opts.map(o => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                              {o.isCustom && <span className="ml-2 text-xs text-purple-500">✦</span>}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <PositionControl part={part} positions={partPositions} onChange={updatePosition} />
+                    </div>
+                  ))}
                 </div>
               </TabsContent>
 
               <TabsContent value="voice" className="space-y-8 pt-4">
                 <div className="space-y-4 max-w-md">
-                  <Label className="text-lg">Text-to-Speech Voice</Label>
+                  <Label className="text-lg font-semibold">TTS Voice</Label>
                   <p className="text-sm text-muted-foreground">
-                    Select the voice your stream bot uses when reading chat messages and alerts.
+                    Choose the voice your stream bot uses for chat messages.
                   </p>
-                  <Select value={settings.voiceId} onValueChange={(val) => updateSetting('voiceId', val)}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select voice" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {VOICES.map(voice => (
-                        <SelectItem key={voice.id} value={voice.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{voice.name}</span>
-                            <span className="text-muted-foreground text-sm ml-4">{voice.description}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {voices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">Loading voices…</p>
+                  ) : (
+                    <Select
+                      value={settings.voiceId}
+                      onValueChange={v => updateSetting('voiceId', v)}
+                    >
+                      <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(voices as VoiceConfig[]).map(v => (
+                          <SelectItem key={v.id} value={v.name}>
+                            <span className="font-medium">{v.name}</span>
+                            {v.description && (
+                              <span className="ml-3 text-muted-foreground text-xs">{v.description}</span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-4 max-w-md">
                   <div>
-                    <Label className="text-base font-semibold">Preview Your Voice</Label>
+                    <Label className="text-base font-semibold">Preview Voice</Label>
                     <p className="text-sm text-muted-foreground mt-1">
                       Hear what your selected voice sounds like before saving.
                     </p>
@@ -322,7 +367,7 @@ export default function Studio() {
                   <Textarea
                     value={testText}
                     onChange={e => setTestText(e.target.value)}
-                    placeholder="Type something to preview..."
+                    placeholder="Type something to preview…"
                     className="resize-none"
                     rows={3}
                   />
@@ -332,17 +377,10 @@ export default function Studio() {
                     className="gap-2"
                     disabled={!testText.trim()}
                   >
-                    {isSpeaking ? (
-                      <><Square className="h-4 w-4" /> Stop</>
-                    ) : (
-                      <><Play className="h-4 w-4" /> Play Voice</>
-                    )}
+                    {isSpeaking
+                      ? <><Square className="h-4 w-4" /> Stop</>
+                      : <><Play className="h-4 w-4" /> Play Voice</>}
                   </Button>
-                  {!window.speechSynthesis && (
-                    <p className="text-xs text-destructive">
-                      Voice preview is not supported in this browser.
-                    </p>
-                  )}
                 </div>
               </TabsContent>
             </Tabs>

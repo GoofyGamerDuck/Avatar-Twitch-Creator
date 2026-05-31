@@ -29,7 +29,8 @@ import type {
   SuccessResponse,
   UploadUrlRequest,
   UploadUrlResponse,
-  User
+  User,
+  VoicesListResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -277,7 +278,7 @@ export const getGetMyAvatarUrl = () => {
 }
 
 /**
- * @summary Get authenticated user's avatar and voice settings
+ * @summary Get authenticated user's avatar settings
  */
 export const getMyAvatar = async ( options?: RequestInit): Promise<AvatarSettings> => {
 
@@ -324,7 +325,7 @@ export type GetMyAvatarQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get authenticated user's avatar and voice settings
+ * @summary Get authenticated user's avatar settings
  */
 
 export function useGetMyAvatar<TData = Awaited<ReturnType<typeof getMyAvatar>>, TError = ErrorType<ErrorResponse>>(
@@ -354,7 +355,7 @@ export const getSaveAvatarUrl = () => {
 }
 
 /**
- * @summary Save avatar and voice settings for the current user
+ * @summary Save avatar settings
  */
 export const saveAvatar = async (avatarInput: AvatarInput, options?: RequestInit): Promise<AvatarSettings> => {
 
@@ -403,7 +404,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SaveAvatarMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Save avatar and voice settings for the current user
+ * @summary Save avatar settings
  */
 export const useSaveAvatar = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAvatar>>, TError,{data: BodyType<AvatarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -425,7 +426,7 @@ export const getGetUserAvatarUrl = (username: string,) => {
 }
 
 /**
- * @summary Get avatar and voice settings for a Twitch username
+ * @summary Get avatar settings for a Twitch username
  */
 export const getUserAvatar = async (username: string, options?: RequestInit): Promise<PublicAvatarResponse> => {
 
@@ -472,7 +473,7 @@ export type GetUserAvatarQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get avatar and voice settings for a Twitch username
+ * @summary Get avatar settings for a Twitch username
  */
 
 export function useGetUserAvatar<TData = Awaited<ReturnType<typeof getUserAvatar>>, TError = ErrorType<ErrorResponse>>(
@@ -558,6 +559,83 @@ export function useGetAvatarParts<TData = Awaited<ReturnType<typeof getAvatarPar
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAvatarPartsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetVoicesUrl = () => {
+
+
+
+
+  return `/api/voices`
+}
+
+/**
+ * @summary List all active voices
+ */
+export const getVoices = async ( options?: RequestInit): Promise<VoicesListResponse> => {
+
+  return customFetch<VoicesListResponse>(getGetVoicesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVoicesQueryKey = () => {
+    return [
+    `/api/voices`
+    ] as const;
+    }
+
+
+export const getGetVoicesQueryOptions = <TData = Awaited<ReturnType<typeof getVoices>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVoicesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVoices>>> = ({ signal }) => getVoices({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVoices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVoicesQueryResult = NonNullable<Awaited<ReturnType<typeof getVoices>>>
+export type GetVoicesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all active voices
+ */
+
+export function useGetVoices<TData = Awaited<ReturnType<typeof getVoices>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVoicesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

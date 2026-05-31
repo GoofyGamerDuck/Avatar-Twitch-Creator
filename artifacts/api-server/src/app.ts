@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import session from "express-session";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { seedDefaults } from "./lib/seed";
 
 const app: Express = express();
 
@@ -70,5 +71,10 @@ app.use(
 );
 
 app.use("/api", router);
+
+// Seed built-in defaults (parts + voices) after startup
+seedDefaults().catch((err: unknown) => {
+  logger.error({ err }, "Failed to seed default data");
+});
 
 export default app;

@@ -37,7 +37,7 @@ export const LogoutResponse = zod.object({
 
 
 /**
- * @summary Get authenticated user's avatar and voice settings
+ * @summary Get authenticated user's avatar settings
  */
 export const GetMyAvatarResponse = zod.object({
   "id": zod.number(),
@@ -49,12 +49,34 @@ export const GetMyAvatarResponse = zod.object({
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "accessory": zod.string().nullable(),
-  "voiceId": zod.string()
+  "voiceId": zod.string(),
+  "partPositions": zod.object({
+  "hair": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "eyes": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "mouth": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "outfit": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional()
+}).optional()
 })
 
 
 /**
- * @summary Save avatar and voice settings for the current user
+ * @summary Save avatar settings
  */
 export const SaveAvatarBody = zod.object({
   "skinTone": zod.string(),
@@ -64,7 +86,29 @@ export const SaveAvatarBody = zod.object({
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "accessory": zod.string().nullish(),
-  "voiceId": zod.string()
+  "voiceId": zod.string(),
+  "partPositions": zod.object({
+  "hair": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "eyes": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "mouth": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "outfit": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional()
+}).optional()
 })
 
 export const SaveAvatarResponse = zod.object({
@@ -77,12 +121,34 @@ export const SaveAvatarResponse = zod.object({
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "accessory": zod.string().nullable(),
-  "voiceId": zod.string()
+  "voiceId": zod.string(),
+  "partPositions": zod.object({
+  "hair": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "eyes": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "mouth": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "outfit": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional()
+}).optional()
 })
 
 
 /**
- * @summary Get avatar and voice settings for a Twitch username
+ * @summary Get avatar settings for a Twitch username
  */
 export const GetUserAvatarParams = zod.object({
   "username": zod.coerce.string()
@@ -102,7 +168,29 @@ export const GetUserAvatarResponse = zod.object({
   "mouthStyle": zod.string(),
   "outfitStyle": zod.string(),
   "accessory": zod.string().nullable(),
-  "voiceId": zod.string()
+  "voiceId": zod.string(),
+  "partPositions": zod.object({
+  "hair": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "eyes": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "mouth": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "outfit": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional(),
+  "accessory": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}).optional()
+}).optional()
 })
 })
 
@@ -118,7 +206,26 @@ export const GetAvatarPartsResponse = zod.object({
   "label": zod.string(),
   "imageUrl": zod.string(),
   "isActive": zod.boolean().optional(),
+  "isBuiltIn": zod.boolean().optional(),
   "sortOrder": zod.number()
+}))
+})
+
+
+/**
+ * @summary List all active voices
+ */
+export const GetVoicesResponse = zod.object({
+  "voices": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "pitch": zod.number(),
+  "rate": zod.number(),
+  "browserVoiceName": zod.string().nullish(),
+  "isActive": zod.boolean().optional(),
+  "isBuiltIn": zod.boolean().optional(),
+  "sortOrder": zod.number().optional()
 }))
 })
 
