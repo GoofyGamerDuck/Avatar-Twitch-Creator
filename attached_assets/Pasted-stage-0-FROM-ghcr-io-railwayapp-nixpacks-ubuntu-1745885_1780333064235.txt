@@ -1,0 +1,81 @@
+stage-0
+FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+38ms
+scheduling build on Metal builder "builder-hklray"
+unpacking archive
+52.8 MB
+297ms
+using build driver nixpacks-v1.41.0
+ 
+╔═════════════════════════════ Nixpacks v1.41.0 ═════════════════════════════╗
+║ setup      │ nodejs_18, pnpm-10_x, openssl                                 ║
+║────────────────────────────────────────────────────────────────────────────║
+║ install    │ npm install -g corepack@0.24.1 && corepack enable             ║
+║            │ pnpm i --frozen-lockfile                                      ║
+║────────────────────────────────────────────────────────────────────────────║
+║ build      │ pnpm run build                                                ║
+║────────────────────────────────────────────────────────────────────────────║
+║ start      │ node --enable-source-maps artifacts/api-server/dist/index.mjs ║
+╚════════════════════════════════════════════════════════════════════════════╝
+ 
+ 
+Saved output to:
+  snapshot-target-unpack
+uploading snapshot
+26.2 MB
+1.2s
+
+internal
+load build definition from Dockerfile
+0ms
+
+internal
+load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+998ms
+
+internal
+load .dockerignore
+0ms
+UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)(https://docs.docker.com/go/dockerfile/rule/undefined-var/)
+ details: Variables should be defined before their use
+
+internal
+load build context
+0ms
+
+stage-0
+WORKDIR /app/ cached
+0ms
+
+stage-0
+COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+4s
+
+stage-0
+COPY . /app/.
+5s
+
+stage-0
+RUN pnpm i --frozen-lockfile
+16s
+Done in 7.2s using pnpm v10.26.1
+
+stage-0
+COPY . /app/.
+8s
+
+stage-0
+RUN pnpm run build
+12s
+Scope: 9 of 10 workspace projects
+artifacts/mockup-sandbox build: You are using Node.js 18.20.5. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.
+artifacts/mockup-sandbox build: failed to load config from /app/artifacts/mockup-sandbox/vite.config.ts
+artifacts/mockup-sandbox build:     at Object.<anonymous> (/app/node_modules/.pnpm/@tailwindcss+oxide@4.3.0/node_modules/@tailwindcss/oxide/index.js:563:11)
+artifacts/mockup-sandbox build:     at Module._compile (node:internal/modules/cjs/loader:1364:14)
+artifacts/mockup-sandbox build:     at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+artifacts/mockup-sandbox build:     at Module.load (node:internal/modules/cjs/loader:1203:32)
+artifacts/mockup-sandbox build:     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:203:29)
+artifacts/mockup-sandbox build:     at ModuleJob.run (node:internal/modules/esm/module_job:195:25)
+artifacts/mockup-sandbox build:     at async loadConfigFromBundledFile (file:///app/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35936:12)
+ ELIFECYCLE  Command failed with exit code 1.
+Build Failed: build daemon returned an error < failed to solve: process "/bin/bash -ol pipefail -c pnpm run build" did not complete successfully: exit code: 1 >
