@@ -8,7 +8,7 @@ import { seedDefaults } from "./lib/seed";
 
 const app: Express = express();
 
-// Trust the Replit reverse proxy so req.ip, secure cookies, and
+// Trust Railway/Netlify reverse proxy so req.ip, secure cookies, and
 // x-forwarded-* headers all resolve correctly.
 app.set("trust proxy", 1);
 
@@ -32,15 +32,10 @@ app.use(
   }),
 );
 
-const allowedOrigins = (process.env.REPLIT_DOMAINS ?? "")
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((d) => d.trim())
-  .filter(Boolean)
-  .map((d) => `https://${d}`);
-
-if (process.env.REPLIT_DEV_DOMAIN) {
-  allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-}
+  .filter(Boolean);
 
 app.use(
   cors({

@@ -1,0 +1,176 @@
+Avatar Twitch Creator — Replit → Railway Migration Guide
+
+Overview
+Your project is a full-stack TypeScript monorepo:
+
+Frontend — React + Vite (artifacts/avatar-app)
+Backend — Node.js + Express (artifacts/api-server)
+Database — PostgreSQL via Drizzle ORM
+Storage — Google Cloud Storage
+
+You'll end up with:
+
+Code hosted on GitHub (free)
+Backend + database on Railway (~$3–5/month)
+Frontend on Netlify (free)
+
+
+Part 1 — Code Changes (Do This First)
+These are all the Replit-specific things in your code that need updating before you deploy anywhere.
+
+Fix 1 — artifacts/api-server/src/app.ts
+The problem: The CORS config reads REPLIT_DOMAINS and REPLIT_DEV_DOMAIN env vars that only exist on Replit. On Railway these will be empty, so CORS will block all requests from your frontend.
+Find this block (around line 33):
+typescriptconst allowedOrigins = (process.env.REPLIT_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean)
+  .map((d) => `https://${d}`);
+
+if (process.env.REPLIT_DEV_DOMAIN) {
+  allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+}
+Replace it with:
+typescriptconst allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean);
+Also find the comment above it:
+typescript// Trust the Replit reverse proxy so req.ip, secure cookies, and
+// x-forwarded-* headers all resolve correctly.
+Change the comment to:
+typescript// Trust Railway/Netlify reverse proxy so req.ip, secure cookies, and
+// x-forwarded-* headers all resolve correctly.
+
+Fix 2 — artifacts/api-server/src/routes/auth.ts
+The problem: The getRedirectUri function has a fallback that reads REPLIT_DOMAINS and REPLIT_DEV_DOMAIN. The main logic (reading x-forwarded-host) will work fine on Railway, but the fallback will silently fail.
+Find this block (around line 20 inside getRedirectUri):
+typescript  // Fallback: env-var based (for local dev without a proxy)
+  const domains = process.env.REPLIT_DOMAINS ?? "";
+  const primaryDomain = domains.split(",")[0]?.trim();
+  if (primaryDomain) {
+    return `https://${primaryDomain}/api/auth/twitch/callback`;
+  }
+  const devDomain = process.env.REPLIT_DEV_DOMAIN;
+  if (devDomain) {
+    return `https://${devDomain}/api/auth/twitch/callback`;
+  }
+  return `http://${publicHost || "localhost"}/api/auth/twitch/callback`;
+Replace it with:
+typescript  // Fallback: env-var based (for local dev without a proxy)
+  const appUrl = process.env.APP_URL ?? "";
+  if (appUrl) {
+    return `${appUrl}/api/auth/twitch/callback`;
+  }
+  return `http://${publicHost || "localhost"}/api/auth/twitch/callback`;
+
+Fix 3 — artifacts/avatar-app/vite.config.ts
+The problem: The vite config imports three @replit/ plugins that won't exist outside Replit. It also requires PORT and BASE_PATH env vars that Replit set automatically — you'll need to provide defaults.
+Find the entire file and replace it with:
+typescriptimport { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+
+const port = Number(process.env.PORT ?? 5173);
+const basePath = process.env.BASE_PATH ?? "/";
+
+export default defineConfig({
+  base: basePath,
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+    },
+    dedupe: ["react", "react-dom"],
+  },
+  root: path.resolve(import.meta.dirname),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
+  },
+  server: {
+    port,
+    strictPort: true,
+    host: "0.0.0.0",
+    allowedHosts: true,
+  },
+  preview: {
+    port,
+    host: "0.0.0.0",
+    allowedHosts: true,
+  },
+});
+
+Fix 4 — artifacts/avatar-app/package.json
+The problem: Three @replit/ dev dependencies are listed. They need to be removed so your build doesn't fail when they can't be installed.
+Find and delete these three lines from the devDependencies section:
+json"@replit/vite-plugin-cartographer": "catalog:",
+"@replit/vite-plugin-dev-banner": "catalog:",
+"@replit/vite-plugin-runtime-error-modal": "catalog:",
+
+Fix 5 — Root pnpm-workspace.yaml or package.json catalog
+The problem: If your workspace has a pnpm-workspace.yaml with a catalog: section, it may reference the Replit packages. Check the file and remove any lines containing @replit/.
+Look for a file called pnpm-workspace.yaml in the root of the project. If you see lines like:
+yaml"@replit/vite-plugin-cartographer": "..."
+"@replit/vite-plugin-dev-banner": "..."
+"@replit/vite-plugin-runtime-error-modal": "..."
+Delete those lines.
+
+Fix 6 — Add a railway.json config file (new file)
+Create a new file in the root of your project called railway.json:
+json{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
+    "healthcheckPath": "/api/health",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+
+Fix 7 — Add a build script to root package.json
+Railway needs to know how to build your project. Open the root package.json and update the "scripts" section so it has a "start" command:
+Find:
+json"scripts": {
+  "preinstall": "...",
+  "build": "pnpm run typecheck && pnpm -r --if-present run build",
+  "typecheck:libs": "tsc --build",
+  "typecheck": "..."
+},
+Add "start" after "build":
+json"scripts": {
+  "preinstall": "...",
+  "build": "pnpm -r --if-present run build",
+  "start": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
+  "typecheck:libs": "tsc --build",
+  "typecheck": "..."
+},
+
+Note: typecheck has been removed from the build command — Railway doesn't need it and it can cause deploy failures if there are minor type errors.
+
+
+Fix 8 — Update .gitignore
+Open .gitignore and make sure it contains these lines (add any that are missing):
+.env
+.env.local
+.env*.local
+.agents/
+.local/
+.cache/
+node_modules/
+dist/
+*.tsbuildinfo
+This prevents secrets and Replit-specific folders from being uploaded to GitHub.
+
+Part 2 — Environment Variables Checklist
+When you set up Railway, you'll need to add these environment variables. Collect them before you start deploying.
+VariableWhere to get itExampleDATABASE_URLAuto-set by Railway when you add a Postgres pluginpostgresql://user:pass@host:5432/dbSESSION_SECRETMake up a long random string (32+ characters)my-super-secret-random-string-here-123TWITCH_CLIENT_IDYour Twitch Developer Consoleabc123xyzTWITCH_CLIENT_SECRETYour Twitch Developer Consolesecret456ALLOWED_ORIGINSYour Netlify frontend URL (set after deploying frontend)https://your-app.netlify.appAPP_URLYour Railway backend URL (set after deploying backend)https://your-app.up.railway.appNODE_ENVSet manuallyproductionPORTAuto-set by Railway(leave blank, Railway sets this)
+Google Cloud Storage variables (if your app uses file uploads):
+VariableWhere to get itGCS_BUCKET_NAMEYour Google Cloud ConsoleGOOGLE_APPLICATION_CREDENTIALS_JSONService account JSON, stringified

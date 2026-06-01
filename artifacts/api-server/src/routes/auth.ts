@@ -24,14 +24,9 @@ function getRedirectUri(req: Request): string {
   }
 
   // Fallback: env-var based (for local dev without a proxy)
-  const domains = process.env.REPLIT_DOMAINS ?? "";
-  const primaryDomain = domains.split(",")[0]?.trim();
-  if (primaryDomain) {
-    return `https://${primaryDomain}/api/auth/twitch/callback`;
-  }
-  const devDomain = process.env.REPLIT_DEV_DOMAIN;
-  if (devDomain) {
-    return `https://${devDomain}/api/auth/twitch/callback`;
+  const appUrl = process.env.APP_URL ?? "";
+  if (appUrl) {
+    return `${appUrl}/api/auth/twitch/callback`;
   }
   return `http://${publicHost || "localhost"}/api/auth/twitch/callback`;
 }
