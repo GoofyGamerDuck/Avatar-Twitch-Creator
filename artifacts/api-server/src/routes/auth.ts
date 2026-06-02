@@ -9,21 +9,15 @@ const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID ?? "";
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET ?? "";
 
 function getRedirectUri(req: Request): string {
-  // Use the real public host the browser is talking to.
-  // Replit's proxy forwards the original Host header, so req.headers.host
-  // is the public domain (e.g. xxx.replit.dev or xxx.replit.app).
-  const forwardedHost = req.headers["x-forwarded-host"];
-  const publicHost = Array.isArray(forwardedHost)
-    ? forwardedHost[0]
-    : (forwardedHost ?? req.headers.host ?? "");
+  // Prefer req.headers.host (set by Railway) over x-forwarded-host (legacy Replit proxy)
+  const publicHost = req.headers.host ?? "";
 
   if (publicHost && publicHost !== "localhost" && !publicHost.startsWith("localhost:")) {
-    const fwdProto = req.headers["x-forwarded-proto"];
-    const proto = Array.isArray(fwdProto) ? fwdProto[0] : (fwdProto ?? "https");
+    const proto = req.protocol || "https";
     return `${proto}://${publicHost}/api/auth/twitch/callback`;
   }
 
-  // Fallback: env-var based (for local dev without a proxy)
+  // Fallback: env-var based (for local dev)
   const appUrl = process.env.APP_URL ?? "";
   if (appUrl) {
     return `${appUrl}/api/auth/twitch/callback`;
