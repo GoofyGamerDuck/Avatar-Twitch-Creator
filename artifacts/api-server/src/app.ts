@@ -73,7 +73,7 @@ app.use("/api", router);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendPath = path.resolve(__dirname, "../../../artifacts/avatar-app/dist/public");
 app.use(express.static(frontendPath));
-app.get("/:path(.*)", (_req, res) => {
+app.get(/^\//, (_req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 
