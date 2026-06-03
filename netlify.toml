@@ -1,2 +1,7 @@
 [build]
   command = "pnpm install --no-frozen-lockfile && pnpm run build"
+
+[build.environment]
+  NETLIFY_USE_PNPM = "true"
+  NPM_FLAGS = "--no-frozen-lockfile"
+  PNPM_FLAGS = "--no-frozen-lockfile"
