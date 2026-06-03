@@ -1,4 +1,5 @@
-import { File } from "@google-cloud/storage";
+import { CopyObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { S3ObjectRef, objectStorageClient } from "./objectStorage";
 
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 
@@ -68,30 +69,43 @@ function createObjectAccessGroup(
 }
 
 export async function setObjectAclPolicy(
-  objectFile: File,
+  objectFile: S3ObjectRef,
   aclPolicy: ObjectAclPolicy,
 ): Promise<void> {
-  const [exists] = await objectFile.exists();
-  if (!exists) {
-    throw new Error(`Object not found: ${objectFile.name}`);
+  // Verify the object exists first.
+  try {
+    await objectStorageClient.send(
+      new HeadObjectCommand({ Bucket: objectFile.bucketName, Key: objectFile.objectName })
+    );
+  } catch {
+    throw new Error(`Object not found: ${objectFile.objectName}`);
   }
 
-  await objectFile.setMetadata({
-    metadata: {
-      [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy),
-    },
-  });
+  // S3 metadata can only be updated by copying the object onto itself with new metadata.
+  await objectStorageClient.send(
+    new CopyObjectCommand({
+      Bucket: objectFile.bucketName,
+      Key: objectFile.objectName,
+      CopySource: `${objectFile.bucketName}/${objectFile.objectName}`,
+      Metadata: {
+        [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy),
+      },
+      MetadataDirective: "REPLACE",
+    })
+  );
 }
 
 export async function getObjectAclPolicy(
-  objectFile: File,
+  objectFile: S3ObjectRef,
 ): Promise<ObjectAclPolicy | null> {
-  const [metadata] = await objectFile.getMetadata();
-  const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
+  const result = await objectStorageClient.send(
+    new HeadObjectCommand({ Bucket: objectFile.bucketName, Key: objectFile.objectName })
+  );
+  const aclPolicy = result.Metadata?.[ACL_POLICY_METADATA_KEY];
   if (!aclPolicy) {
     return null;
   }
-  return JSON.parse(aclPolicy as string);
+  return JSON.parse(aclPolicy);
 }
 
 export async function canAccessObject({
@@ -100,7 +114,7 @@ export async function canAccessObject({
   requestedPermission,
 }: {
   userId?: string;
-  objectFile: File;
+  objectFile: S3ObjectRef;
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
   const aclPolicy = await getObjectAclPolicy(objectFile);
